@@ -1,0 +1,21 @@
+# 시크릿/환경변수 (절대 커밋 금지)
+.env
+.env.*
+*.env
+api.env
+.claude/api.env
+
+# 로그/임시 데이터
+logs/
+archive/
+output/
+
+# 시스템 파일
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 에디터
+.vscode/
+*.swp
+*.swo
