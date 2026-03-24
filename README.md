@@ -26,8 +26,10 @@ Google Sheets (원본 데이터 입력 / 시뮬레이터)
 |---|---|
 | 이상 탐지 | Config-driven 룰 기반 8가지 탐지 (생산량 급감, 불량률 급등, 가동률 저하 등) |
 | AI 자동 해석 | Claude API로 마스킹된 데이터 분석 → 원인 추정 + 권장 액션 생성 |
-| 이메일 알림 | 심각도 "높음" 감지 시 즉시 발송, 30분 중복 억제 |
-| Power BI 대시보드 | 실시간 현황 / 이상 탐지 현황 / 장기 트렌드 / AI 인사이트 (4페이지) |
+| AI 이상 패턴 분류 | Python 1차 규칙 분류 → AI 2차 검증/보정 (하이브리드) |
+| 이메일 알림 | 심각도 "높음" 감지 시 즉시 발송, 반복 경고 태그, 30분 중복 억제 |
+| Power BI 대시보드 | 실시간 현황 / 이상 탐지 & AI 인사이트 / 장기 트렌드 (3페이지) |
+| Power BI AI 시각화 | Key Influencers, Decomposition Tree, Smart Narrative (빌트인) |
 | n8n 워크플로 자동 생성 | Claude Code Skill(/n8n-gen)으로 워크플로 JSON 자동 생성 |
 
 ---
@@ -39,11 +41,11 @@ Google Sheets (원본 데이터 입력 / 시뮬레이터)
 | 데이터 입력 | Google Sheets | 무료 |
 | 분석 결과 저장 | SharePoint Excel (E3 포함) | 0원 |
 | 파이프라인 | n8n 셀프호스팅 (Docker) | 무료 |
-| 이상 탐지 | Python (Config-driven Rules) | 무료 |
-| AI 해석 생성 | Claude API (Anthropic) | 월 1~3달러 |
+| 이상 탐지 + 패턴 1차 분류 | Python (Config-driven Rules) | 무료 |
+| AI 해석 + 분류 검증 | Claude API (Anthropic) | 월 1~3달러 |
 | 이메일 알림 | n8n Gmail 노드 | 무료 |
 | n8n 워크플로 생성 | Claude Code Skill (/n8n-gen) | 무료 |
-| 대시보드 (메인) | Power BI Pro (E3 포함) | 0원 |
+| 대시보드 + AI 시각화 | Power BI Pro (E3 포함) | 0원 |
 | 대시보드 (추후) | Tableau Public | 무료 |
 
 ---
@@ -63,7 +65,7 @@ ai_production_monitor/
 │       ├── test-scenario/       # 테스트 시나리오
 │       └── ...
 ├── pre-requirement/
-│   └── pre-requirement.txt      # 프로젝트 명세서 (v2.1)
+│   └── pre-requirement.txt      # 프로젝트 명세서 (v2.3)
 ├── src/                         # (예정) 소스 코드
 │   ├── detection/
 │   │   ├── engine.py            # 이상 탐지 범용 엔진
@@ -110,6 +112,8 @@ ai_production_monitor/
 | 레벨 2 (옵션) | LLM 없이 템플릿 모드 | 0건 |
 | 레벨 3 (확장) | 로컬 LLM (Ollama) | 0건 |
 
+> **AI 기능별 보안**: Python 패턴 1차 분류는 로컬 처리(외부 전송 없음). Claude API(해석 + 분류 검증)는 심각도 "높음" 또는 "악화" 시에만 마스킹된 데이터 전달, 학습 미사용 약관 적용. Power BI AI 시각화는 Microsoft 테넌트 내 처리로 외부 전송 없음.
+
 ---
 
 ## 개발 진행 현황
@@ -131,7 +135,7 @@ ai_production_monitor/
 | # | 항목 | 상태 |
 |---|---|---|
 | 1 | Config-driven 이상 탐지 (rules.json + engine.py) | 🔲 미시작 |
-| 2 | Claude API 연동 + AI 해석 생성 | 🔲 미시작 |
+| 2 | Python 패턴 1차 분류 + Claude API 해석/검증 | 🔲 미시작 |
 | 3 | 마스킹 처리 로직 | 🔲 미시작 |
 | 4 | SharePoint Excel 자동 저장 | 🔲 미시작 |
 | 5 | 중복 알림 방지 (Static Data) | 🔲 미시작 |
@@ -143,9 +147,10 @@ ai_production_monitor/
 | # | 항목 | 상태 |
 |---|---|---|
 | 1 | Power BI Desktop → SharePoint Excel 연결 | 🔲 미시작 |
-| 2 | 4개 페이지 대시보드 제작 | 🔲 미시작 |
-| 3 | Power BI Service 게시 + 자동 새로고침 | 🔲 미시작 |
-| 4 | 이메일에 Power BI 링크 포함 | 🔲 미시작 |
+| 2 | 3개 페이지 대시보드 제작 | 🔲 미시작 |
+| 3 | Power BI AI 시각화 배치 (Key Influencers, Decomp. Tree, Smart Narrative) | 🔲 미시작 |
+| 4 | Power BI Service 게시 + 자동 새로고침 | 🔲 미시작 |
+| 5 | 이메일에 Power BI 링크 포함 | 🔲 미시작 |
 
 ### Phase 4: 통합 테스트 + 완성 [미시작]
 
@@ -180,3 +185,5 @@ ai_production_monitor/
 |---|---|
 | 2026-03-23 | 프로젝트 기획 완료, 명세서 v2.1 작성 |
 | 2026-03-23 | README.md 초기 생성 |
+| 2026-03-24 | v2.2: AI 활용 확대 (Power BI AI 시각화 + 이상 패턴 분류) + 보안 정리 |
+| 2026-03-24 | v2.3: 패턴 분류 Python+AI 하이브리드, n8n-gen 템플릿 방식 명확화 |
