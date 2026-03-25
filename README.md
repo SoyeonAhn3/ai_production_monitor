@@ -244,6 +244,7 @@ ai_production_monitor/
 | 1 | Tableau Public 분석용 대시보드 | ⏸ 보류 |
 | 2 | n8n MCP 서버 (API 직접 제어) | ⏸ 보류 |
 | 3 | Supabase 전환 | ⏸ 보류 |
+| 4 | `/plan-check` 스킬 개발 — 기획 단계 검증 체크리스트 (환경/인프라, 외부 서비스, 데이터, 기술 스택, 보안/규정) | ⏸ Phase 4 이후 |
 
 ---
 
