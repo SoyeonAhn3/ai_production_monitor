@@ -1,0 +1,24 @@
+{
+  "name": "ai_production_monitor",
+  "version": "1.0.0",
+  "description": "생산 실적 이상 탐지 + AI 자동 해석 + Power BI 대시보드",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SoyeonAhn3/ai_production_monitor.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/SoyeonAhn3/ai_production_monitor/issues"
+  },
+  "homepage": "https://github.com/SoyeonAhn3/ai_production_monitor#readme",
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}

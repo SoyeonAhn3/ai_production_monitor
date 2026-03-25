@@ -1,0 +1,308 @@
+{
+  "name": "A: 테스트 시뮬레이터",
+  "nodes": [
+    {
+      "id": "a1-webhook-simulate",
+      "name": "Webhook Simulate",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "parameters": {
+        "path": "simulate",
+        "httpMethod": "GET",
+        "responseMode": "responseNode"
+      },
+      "webhookId": "simulate-trigger"
+    },
+    {
+      "id": "a2-read-counter",
+      "name": "Read Counter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300],
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst counter = staticData.counter || 0;\nconst hours = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'];\n\nif (counter >= 10) {\n  return [{ json: { done: true, message: '하루 시뮬레이션 완료 (10시간). /webhook/reset으로 초기화하세요.', counter } }];\n}\n\nreturn [{ json: { done: false, counter, currentHour: hours[counter], hours } }];"
+      }
+    },
+    {
+      "id": "a3-check-done",
+      "name": "Check Done",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [690, 300],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-done-condition",
+              "leftValue": "={{ $json.done }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "a4-read-databank",
+      "name": "Read DataBank",
+      "type": "n8n-nodes-base.microsoftExcel",
+      "typeVersion": 2,
+      "position": [910, 400],
+      "parameters": {
+        "operation": "getRows",
+        "workbook": {
+          "__rl": true,
+          "value": "simulator/data_bank.xlsx",
+          "mode": "list"
+        },
+        "worksheet": {
+          "__rl": true,
+          "value": "data_bank",
+          "mode": "list"
+        },
+        "dataLocationOnSheet": {
+          "rangeDefinition": "detectAutomatically"
+        }
+      },
+      "credentials": {
+        "microsoftExcelOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Microsoft Excel account"
+        }
+      }
+    },
+    {
+      "id": "a5-filter-hour",
+      "name": "Filter Current Hour",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1130, 400],
+      "parameters": {
+        "jsCode": "// 이전 노드(Read Counter)에서 전달된 카운터 정보 가져오기\nconst hours = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'];\nconst staticData = $getWorkflowStaticData('global');\nconst counter = staticData.counter || 0;\nconst currentHour = hours[counter];\n\n// data_bank에서 현재 시간 행만 필터링\nconst filtered = items.filter(item => item.json['시간'] === currentHour);\n\nif (filtered.length === 0) {\n  return [{ json: { error: true, message: `${currentHour} 데이터가 없습니다.` } }];\n}\n\nreturn filtered;"
+      }
+    },
+    {
+      "id": "a6-append-week",
+      "name": "Append to Production Week",
+      "type": "n8n-nodes-base.microsoftExcel",
+      "typeVersion": 2,
+      "position": [1350, 400],
+      "parameters": {
+        "operation": "append",
+        "workbook": {
+          "__rl": true,
+          "value": "production/production_week.xlsx",
+          "mode": "list"
+        },
+        "worksheet": {
+          "__rl": true,
+          "value": "production_week",
+          "mode": "list"
+        },
+        "dataMode": "autoMapInputData"
+      },
+      "credentials": {
+        "microsoftExcelOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Microsoft Excel account"
+        }
+      }
+    },
+    {
+      "id": "a7-update-counter",
+      "name": "Update Counter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1570, 400],
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst counter = staticData.counter || 0;\nconst hours = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'];\n\nstaticData.counter = counter + 1;\n\nconst addedHour = hours[counter];\nconst nextCounter = counter + 1;\nconst nextHour = nextCounter < 10 ? hours[nextCounter] : '완료';\n\nreturn [{\n  json: {\n    response: {\n      success: true,\n      message: `${addedHour} 데이터 추가 완료`,\n      addedRows: items.length,\n      currentStep: `${nextCounter}/10`,\n      nextHour: nextHour\n    }\n  }\n}];"
+      }
+    },
+    {
+      "id": "a8-respond-success",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1790, 400],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.response) }}"
+      }
+    },
+    {
+      "id": "a9-respond-done",
+      "name": "Respond Done",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [910, 180],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ done: true, message: $json.message, counter: $json.counter }) }}"
+      }
+    },
+    {
+      "id": "a10-webhook-reset",
+      "name": "Webhook Reset",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 600],
+      "parameters": {
+        "path": "reset",
+        "httpMethod": "GET",
+        "responseMode": "responseNode"
+      },
+      "webhookId": "reset-trigger"
+    },
+    {
+      "id": "a11-reset-counter",
+      "name": "Reset Counter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 600],
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.counter = 0;\n\nreturn [{\n  json: {\n    response: {\n      success: true,\n      message: '카운터 초기화 완료 (0). production_week.xlsx는 n8n에서 수동으로 클리어하거나 generate_empty_files.js를 다시 실행하세요.'\n    }\n  }\n}];"
+      }
+    },
+    {
+      "id": "a12-respond-reset",
+      "name": "Respond Reset",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [690, 600],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.response) }}"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Simulate": {
+      "main": [
+        [
+          {
+            "node": "Read Counter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Counter": {
+      "main": [
+        [
+          {
+            "node": "Check Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Done": {
+      "main": [
+        [
+          {
+            "node": "Respond Done",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read DataBank",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read DataBank": {
+      "main": [
+        [
+          {
+            "node": "Filter Current Hour",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Current Hour": {
+      "main": [
+        [
+          {
+            "node": "Append to Production Week",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to Production Week": {
+      "main": [
+        [
+          {
+            "node": "Update Counter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Counter": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Reset": {
+      "main": [
+        [
+          {
+            "node": "Reset Counter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reset Counter": {
+      "main": [
+        [
+          {
+            "node": "Respond Reset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "Phase 1"
+    },
+    {
+      "name": "시뮬레이터"
+    }
+  ]
+}
