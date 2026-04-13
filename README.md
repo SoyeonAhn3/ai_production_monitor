@@ -9,14 +9,14 @@
 ## 시스템 아키텍처
 
 ```
-OneDrive Excel (주간 raw data, 외부에서 시간별 행 추가)
+Google Sheets (주간 raw data, 외부에서 시간별 행 추가)
   → n8n 셀프호스팅 npm (60분 스케줄 / 테스트 시 Webhook)
   → JavaScript 이상 탐지 (Config-driven Rules: rules.json + engine.js)
   → JavaScript 패턴 1차 분류 (규칙 기반, 로컬)
   → Claude API (심각/악화 건만, 마스킹 데이터)
   → Gmail 알림 (심각+중간: 즉시 / 전체: 다음날 08:00 일일 리포트)
-  → OneDrive Excel 결과 저장
-  → Power BI Service 대시보드 (OneDrive 연결, 자동 새로고침 하루 8회)
+  → Google Sheets 결과 저장
+  → Power BI Service 대시보드 (Google Sheets CSV Publish + Web connector, 자동 새로고침 하루 8회)
 ```
 
 ---
@@ -42,14 +42,14 @@ OneDrive Excel (주간 raw data, 외부에서 시간별 행 추가)
 
 | 역할 | 도구 | 비용 |
 |---|---|---|
-| 데이터 저장 (전체) | OneDrive for Business (E3) | 0원 |
+| 데이터 저장 (전체) | Google Sheets (Google 계정) | 무료 |
 | 파이프라인 | n8n 셀프호스팅 (npm) | 무료 |
 | 이상 탐지 + 패턴 분류 | JavaScript (n8n Code 노드) | 무료 |
 | AI 해석 + 분류 검증 | Claude API (Anthropic) | 월 1~3달러 |
 | AI Agent 일일 리포트 | Claude API Tool Use (Anthropic) | 월 +0.2~0.5달러 |
 | 이메일 (즉시 + 일일 리포트) | n8n Gmail 노드 | 무료 |
 | 워크플로 JSON 생성 | Claude Code Skill (/n8n-gen) | 무료 |
-| 대시보드 + AI 시각화 | Power BI Pro (E3) | 0원 |
+| 대시보드 + AI 시각화 | Power BI (Google Sheets CSV Publish 연결) | 0원 |
 | 대시보드 (추후) | Tableau Public | 무료 |
 
 > 총 추가 비용: **월 1~3달러** (Claude API만)
@@ -83,15 +83,17 @@ ai_production_monitor/
 │   └── Phase4_통합테스트_완성.md       # 🔲 미시작
 ├── pre-requirement/
 │   └── pre-requirement.txt      # 프로젝트 명세서 (v2.3)
-├── production/                  # 운영 데이터
-│   ├── production_week.xlsx     # 이번 주 raw data (헤더만, 시뮬레이터가 채움)
-│   └── production_results.xlsx  # 분석 결과 (4개 탭 헤더만)
+├── production/                  # 운영 데이터 (Google Sheets)
+│   └── (production_week, production_results → Google Sheets로 관리)
 ├── config/                      # 설정 파일
-│   └── line_master.xlsx         # 라인/팀 구성 (12라인, 3팀)
+│   ├── sheets_config.json       # Google Sheets ID 매핑
+│   ├── credentials.json         # Google 서비스 계정 키 (.gitignore)
+│   └── (line_master → Google Sheets로 관리)
 ├── simulator/                   # 테스트 전용
-│   └── data_bank.xlsx           # 데모용 사전 데이터 (120행, 이상 시나리오 5개)
+│   └── (data_bank → Google Sheets로 관리)
 ├── backup/                      # 주간 백업용
-├── scripts/                     # 데이터 생성 스크립트
+├── scripts/                     # 데이터 생성 스크립트 (googleapis)
+│   ├── google_auth.js           # Google Sheets API 인증 헬퍼
 │   ├── generate_line_master.js
 │   ├── generate_data_bank.js
 │   └── generate_empty_files.js
@@ -194,7 +196,7 @@ ai_production_monitor/
 | 4 | Claude Code Skill "/n8n-gen" 개발 | ✅ 완료 |
 | 5 | 워크플로 A (테스트 시뮬레이터) JSON 생성 + Import | 🚧 JSON 생성 완료, Import 대기 |
 | 6 | 워크플로 B 기본 구조 JSON 생성 + Import | 🔲 미시작 |
-| 7 | Credential 연결 (OneDrive, Gmail, Claude) | 🔲 미시작 |
+| 7 | Credential 연결 (Google Sheets, Gmail, Claude) | 🔲 미시작 |
 
 > 상세: [Phase/Phase1_환경구축_데이터.md](Phase/Phase1_환경구축_데이터.md)
 
@@ -217,10 +219,10 @@ ai_production_monitor/
 
 | # | 항목 | 상태 |
 |---|---|---|
-| 1 | Power BI Desktop → OneDrive Excel 연결 | 🔲 미시작 |
+| 1 | Power BI Desktop → Google Sheets CSV Publish 연결 (Web connector) | 🔲 미시작 |
 | 2 | 3개 페이지 대시보드 제작 | 🔲 미시작 |
 | 3 | Power BI AI 시각화 배치 (Key Influencers, Decomp. Tree, Smart Narrative) | 🔲 미시작 |
-| 4 | Power BI Service 게시 + 자동 새로고침 | 🔲 미시작 |
+| 4 | Power BI Service 게시 + 자동 새로고침 (Gateway 필요) | 🔲 미시작 |
 | 5 | 이메일에 Power BI 링크 포함 | 🔲 미시작 |
 
 > 상세: [Phase/Phase3_PowerBI_대시보드.md](Phase/Phase3_PowerBI_대시보드.md)
@@ -248,6 +250,40 @@ ai_production_monitor/
 
 ---
 
+## 데이터 소스 전환 가이드
+
+현재 Google Sheets 기반이며, 추후 OneDrive Excel로 전환이 필요한 경우 아래 범위를 변경합니다.
+
+### 현재 vs 전환 후 파이프라인
+
+| 구간 | 현재 (Google Sheets) | 전환 후 (OneDrive Excel) |
+|------|---------------------|--------------------------|
+| 데이터 저장 | Google Sheets | OneDrive Excel (.xlsx) |
+| n8n 노드 | `n8n-nodes-base.googleSheets` | `n8n-nodes-base.microsoftExcel` |
+| n8n Credential | Google Sheets OAuth2 | Microsoft Excel OAuth2 (Azure AD) |
+| 스크립트 라이브러리 | `googleapis` | `xlsx` |
+| 인증 (스크립트) | Google 서비스 계정 JSON | 불필요 (로컬 파일 쓰기) |
+| Power BI 연결 | CSV Publish + Web connector + Gateway | OneDrive 직접 연결 (공식 지원) |
+
+### 전환 시 변경 파일 목록
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `scripts/google_auth.js` | 삭제 (불필요) |
+| `scripts/generate_line_master.js` | googleapis → xlsx 라이브러리 |
+| `scripts/generate_data_bank.js` | googleapis → xlsx 라이브러리 |
+| `scripts/generate_empty_files.js` | googleapis → xlsx 라이브러리 |
+| `config/sheets_config.json` | 삭제 (파일 경로로 대체) |
+| `config/credentials.json` | 삭제 (불필요) |
+| `package.json` | `googleapis` → `xlsx` |
+| `n8n/workflow_a_simulator.json` | Google Sheets 노드 → Microsoft Excel 노드 |
+| 각 Phase 문서 | "Google Sheets" → "OneDrive Excel" 참조 변경 |
+
+> 각 스크립트/워크플로 파일에 `// DATA_SOURCE: Google Sheets` 주석이 있어 전환 대상을 쉽게 검색할 수 있습니다.
+> `git log`에서 이전 xlsx 버전의 스크립트를 참조할 수 있습니다.
+
+---
+
 ## 프로젝트 성격
 
 이 프로젝트는 **포트폴리오/데모 목적**으로 제작됩니다.
@@ -269,3 +305,4 @@ ai_production_monitor/
 | 2026-03-25 | v2.5: Docker → npm, Python → JavaScript 전환 (개발 환경에서 WSL2/Docker 사용 불가, n8n 네이티브 JavaScript Code 노드로 변경) |
 | 2026-03-25 | v2.6: SharePoint → OneDrive 전환 (개발 환경에서 SharePoint 사이트 생성 권한 없음, OneDrive for Business로 변경) |
 | 2026-03-25 | Phase 1 진행: n8n 설치, 데이터 파일 생성 (line_master, data_bank, production_week, production_results), /n8n-gen 스킬 개발, 워크플로 A JSON 생성 |
+| 2026-04-13 | v2.7: OneDrive Excel → Google Sheets 전환 (Excel OAuth2 credential 문제). 스크립트 xlsx→googleapis, n8n 워크플로 Google Sheets 노드, Power BI는 CSV Publish + Web connector 방식 |

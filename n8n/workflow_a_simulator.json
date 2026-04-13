@@ -55,29 +55,26 @@
     {
       "id": "a4-read-databank",
       "name": "Read DataBank",
-      "type": "n8n-nodes-base.microsoftExcel",
-      "typeVersion": 2,
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
       "position": [910, 400],
       "parameters": {
-        "operation": "getRows",
-        "workbook": {
+        "operation": "read",
+        "documentId": {
           "__rl": true,
-          "value": "simulator/data_bank.xlsx",
-          "mode": "list"
+          "value": "PLACEHOLDER_DATA_BANK_SHEET_ID",
+          "mode": "id"
         },
-        "worksheet": {
+        "sheetName": {
           "__rl": true,
           "value": "data_bank",
           "mode": "list"
-        },
-        "dataLocationOnSheet": {
-          "rangeDefinition": "detectAutomatically"
         }
       },
       "credentials": {
-        "microsoftExcelOAuth2Api": {
+        "googleSheetsOAuth2Api": {
           "id": "PLACEHOLDER",
-          "name": "Microsoft Excel account"
+          "name": "Google Sheets account"
         }
       }
     },
@@ -94,27 +91,29 @@
     {
       "id": "a6-append-week",
       "name": "Append to Production Week",
-      "type": "n8n-nodes-base.microsoftExcel",
-      "typeVersion": 2,
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
       "position": [1350, 400],
       "parameters": {
         "operation": "append",
-        "workbook": {
+        "documentId": {
           "__rl": true,
-          "value": "production/production_week.xlsx",
-          "mode": "list"
+          "value": "PLACEHOLDER_PRODUCTION_WEEK_SHEET_ID",
+          "mode": "id"
         },
-        "worksheet": {
+        "sheetName": {
           "__rl": true,
           "value": "production_week",
           "mode": "list"
         },
-        "dataMode": "autoMapInputData"
+        "columns": {
+          "mappingMode": "autoMapInputData"
+        }
       },
       "credentials": {
-        "microsoftExcelOAuth2Api": {
+        "googleSheetsOAuth2Api": {
           "id": "PLACEHOLDER",
-          "name": "Microsoft Excel account"
+          "name": "Google Sheets account"
         }
       }
     },
@@ -170,7 +169,7 @@
       "typeVersion": 2,
       "position": [470, 600],
       "parameters": {
-        "jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.counter = 0;\n\nreturn [{\n  json: {\n    response: {\n      success: true,\n      message: '카운터 초기화 완료 (0). production_week.xlsx는 n8n에서 수동으로 클리어하거나 generate_empty_files.js를 다시 실행하세요.'\n    }\n  }\n}];"
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.counter = 0;\n\nreturn [{\n  json: {\n    response: {\n      success: true,\n      message: '카운터 초기화 완료 (0). production_week Google Sheets는 generate_empty_files.js를 다시 실행하여 초기화하세요.'\n    }\n  }\n}];"
       }
     },
     {

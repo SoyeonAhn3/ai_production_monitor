@@ -1,0 +1,23 @@
+{
+  "production_week": {
+    "spreadsheetId": "YOUR_SPREADSHEET_ID_HERE",
+    "sheetName": "production_week"
+  },
+  "production_results": {
+    "spreadsheetId": "YOUR_SPREADSHEET_ID_HERE",
+    "sheets": [
+      "hourly_summary",
+      "anomaly_log",
+      "daily_summary",
+      "error_log"
+    ]
+  },
+  "line_master": {
+    "spreadsheetId": "YOUR_SPREADSHEET_ID_HERE",
+    "sheetName": "line_master"
+  },
+  "data_bank": {
+    "spreadsheetId": "YOUR_SPREADSHEET_ID_HERE",
+    "sheetName": "data_bank"
+  }
+}

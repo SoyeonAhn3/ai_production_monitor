@@ -19,6 +19,8 @@
   },
   "homepage": "https://github.com/SoyeonAhn3/ai_production_monitor#readme",
   "dependencies": {
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "googleapis": "^144.0.0",
+    "google-auth-library": "^9.15.1"
   }
 }
