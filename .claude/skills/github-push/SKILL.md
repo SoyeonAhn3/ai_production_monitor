@@ -1,15 +1,18 @@
 ---
 name: github-push
-version: 1.0
-description: 프로젝트를 GitHub에 커밋하고 푸시한다. git 미초기화 시 init + remote 설정부터 진행. 변경 내용을 분석해 커밋 메시지 초안을 자동 생성하고 사용자 확인 후 push한다. "깃허브에 올려줘", "git push해줘", "변경사항 올려줘", "커밋해줘" 등의 요청 시 트리거한다.
-depends_on: []
+version: 1.2
+description: 프로젝트를 GitHub에 커밋하고 푸시한다. git 미초기화 시 init + remote 설정부터 진행. 변경 내용을 분석해 커밋 메시지 초안을 자동 생성하고 사용자 확인 후 push한다. push 완료 시 dev-log로 커밋 이력을 자동 기록한다. "깃허브에 올려줘", "git push해줘", "변경사항 올려줘", "커밋해줘" 등의 요청 시 트리거한다.
+depends_on:
+  - dev-log
 produces:
   - GitHub 원격 저장소 업데이트
+  - logs/dev_YYYYMMDD.jsonl (커밋 이력 자동 기록)
 ---
 
 # GitHub Push Skill
 
 변경된 파일을 분석해 커밋 메시지 초안을 생성하고, 사용자 확인 후 GitHub에 푸시한다.
+push 완료 후 dev-log 스킬을 호출하여 커밋 이력을 자동 기록한다.
 
 ---
 
@@ -21,7 +24,8 @@ STEP 2: (미초기화 시) init + .gitignore 확인 + remote 설정
 STEP 3: 변경사항 확인 (git status + git diff)
 STEP 4: 커밋 메시지 초안 생성 → 사용자 확인
 STEP 5: git add + commit + push
-STEP 6: 완료 보고
+STEP 6: dev-log 자동 기록 (커밋 이력)
+STEP 7: 완료 보고
 ```
 
 ---
@@ -231,7 +235,60 @@ git push -u origin main
 
 ---
 
-## STEP 6 — 완료 보고
+## STEP 6 — dev-log 자동 기록
+
+push 성공 직후, dev-log 스킬의 스키마(`references/schema.md`)를 참조하여 커밋 이력을 자동 기록한다.
+
+### 6-1. 스키마 로드
+
+```
+Read(".claude/skills/dev-log/references/schema.md")
+```
+
+### 6-2. 기록 항목 구성
+
+| 항목 | 값 |
+|---|---|
+| `module` | `"github-push"` |
+| `event_type` | `"INFO"` |
+| `message` | 커밋 메시지 제목 (50자 이내) |
+| `data` | 아래 참고 |
+
+`data` 필드:
+
+```json
+{
+  "commit_hash": "[git log --format=%h -1 결과]",
+  "branch": "[현재 브랜치명]",
+  "remote": "[remote URL]",
+  "files_changed": N,
+  "commit_message": "[전체 커밋 메시지]"
+}
+```
+
+### 6-3. JSONL 기록
+
+1. 오늘 날짜 기준 파일 경로: `logs/dev_YYYYMMDD.jsonl`
+2. `logs/dev/` 디렉토리 없으면 `mkdir -p logs`
+3. 파일이 없으면 Write로 신규 생성, 있으면 Edit으로 마지막 줄 뒤에 추가
+
+예시:
+```jsonl
+{"timestamp":"2026-04-28T14:30:00+09:00","session_id":"f1e2d3c4","module":"github-push","event_type":"INFO","message":"add archive skill and token optimization","data":{"commit_hash":"a1b2c3d","branch":"main","remote":"https://github.com/user/repo.git","files_changed":4,"commit_message":"add archive skill and token optimization"}}
+```
+
+### 6-4. 실패 시 처리
+
+dev-log 기록 실패는 push 자체의 성공에 영향을 주지 않는다.
+실패 시 STEP 7 완료 보고에 경고 메시지만 추가:
+
+```
+⚠ dev-log 기록 실패 — push는 정상 완료됨
+```
+
+---
+
+## STEP 7 — 완료 보고
 
 ```
 [GitHub Push 완료]
@@ -276,3 +333,4 @@ git push -u origin main
 |---|---|---|
 | 2026-03-10 | v1.0 | 최초 작성 — git init/push 통합, 커밋 메시지 자동 초안 + 사용자 확인 |
 | 2026-03-11 | v1.1 | .env 시크릿 파일 자동 제외, README 충돌 시 로컬 우선(-X ours) 자동 처리 |
+| 2026-04-28 | v1.2 | dev-log 스킬 조합 방식 연동 — push 완료 후 커밋 이력 자동 기록 (STEP 6 추가) |
