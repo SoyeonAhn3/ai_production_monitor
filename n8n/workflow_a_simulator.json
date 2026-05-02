@@ -62,12 +62,12 @@
         "operation": "read",
         "documentId": {
           "__rl": true,
-          "value": "PLACEHOLDER_DATA_BANK_SHEET_ID",
+          "value": "1R97lvfWuLi3N5IY-H4JHc7lZkqSR2G7s7BEn7nz471o",
           "mode": "id"
         },
         "sheetName": {
           "__rl": true,
-          "value": "data_bank",
+          "value": "gid=0",
           "mode": "list"
         }
       },
@@ -98,12 +98,12 @@
         "operation": "append",
         "documentId": {
           "__rl": true,
-          "value": "PLACEHOLDER_PRODUCTION_WEEK_SHEET_ID",
+          "value": "1HPfnkwfkK5sDkUZiKDxqGB5jBIOVm1VsPCON6QpFRtM",
           "mode": "id"
         },
         "sheetName": {
           "__rl": true,
-          "value": "production_week",
+          "value": "gid=0",
           "mode": "list"
         },
         "columns": {

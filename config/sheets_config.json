@@ -1,10 +1,10 @@
 {
   "production_week": {
-    "spreadsheetId": "YOUR_SPREADSHEET_ID_HERE",
+    "spreadsheetId": "1HPfnkwfkK5sDkUZiKDxqGB5jBIOVm1VsPCON6QpFRtM",
     "sheetName": "production_week"
   },
   "production_results": {
-    "spreadsheetId": "YOUR_SPREADSHEET_ID_HERE",
+    "spreadsheetId": "1VAztXgQjDGP6tJBg9ClOCR7Mmhuv95-P0HbIAA3hlTo",
     "sheets": [
       "hourly_summary",
       "anomaly_log",
@@ -13,11 +13,11 @@
     ]
   },
   "line_master": {
-    "spreadsheetId": "YOUR_SPREADSHEET_ID_HERE",
+    "spreadsheetId": "1ailXsbVux_5RCDBhXgVmiBLkH1c09_yn-2WliHN2sgc",
     "sheetName": "line_master"
   },
   "data_bank": {
-    "spreadsheetId": "YOUR_SPREADSHEET_ID_HERE",
+    "spreadsheetId": "1R97lvfWuLi3N5IY-H4JHc7lZkqSR2G7s7BEn7nz471o",
     "sheetName": "data_bank"
   }
 }

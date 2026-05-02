@@ -35,7 +35,7 @@ Power BI Service에 게시하여 자동 새로고침(하루 8회, Gateway 필요
 
 ### 데이터 소스
 - hourly_summary (팀별 시간대별 집계)
-- production_week.xlsx (라인별 상세)
+- production_week (라인별 상세)
 
 ### 시각화 구성
 - **KPI 카드**: 팀별 달성률, 가동률
@@ -55,7 +55,8 @@ Power BI Service에 게시하여 자동 새로고침(하루 8회, Gateway 필요
 - **KPI 카드**: 심각도별 건수
 - **분포 차트**: 라인별 이상 분포
 - **타임라인**: 이상 이력 + pattern_type(신규/반복/악화) 표시
-- **필터**: "반복만" / "심각만" / 특정 라인
+- **필터**: "반복만" / "심각만" / 특정 라인 / "알림 미발송만" (notification_status = "failed")
+- **알림 상태 KPI**: notification_status 활용 — "알림 미발송" 건수 카드 + sent/failed/skipped 슬라이서
 - **Decomposition Tree**: 이상건수 → severity → type → 라인 → pattern 드릴다운
 - **AI 해석 표시**: 선택 건의 ai_insight 텍스트 (드릴스루 또는 툴팁)
 
@@ -141,3 +142,4 @@ https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHE
 |---|---|
 | 2026-03-25 | 최초 작성 (명세서 v2.3 기반) |
 | 2026-04-13 | OneDrive Excel → Google Sheets CSV Publish 전환, Gateway 요구사항 추가 |
+| 2026-05-02 | 명세서 v3.0 반영: notification_status 활용 시각화 추가 (알림 미발송 KPI, 슬라이서) |
