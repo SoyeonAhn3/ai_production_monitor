@@ -1,0 +1,676 @@
+{
+  "name": "B: 모니터 — 이상 탐지",
+  "nodes": [
+    {
+      "id": "b1-schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 500],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtMinute": 10,
+              "triggerAtHour": 8,
+              "field": "cronExpression",
+              "expression": "10 8-17 * * 1-5"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "b2-code0-run-id",
+      "name": "Code 0: run_id 생성",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 500],
+      "parameters": {
+        "jsCode": "// Code Node 0: run_id 생성\n// 입력: Schedule Trigger에서 트리거됨\n// 출력: run_id를 다음 노드에 전달\n\nconst now = new Date();\nconst pad = (n) =\u003e String(n).padStart(2, \u00270\u0027);\nconst dateStr = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;\nconst timeStr = `${pad(now.getHours())}${pad(now.getMinutes())}`;\nconst run_id = `B_${dateStr}_${timeStr}`;\n\nreturn [{ json: { run_id } }];"
+      }
+    },
+    {
+      "id": "b3-read-production-week",
+      "name": "Read production_week",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [690, 400],
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "1HPfnkwfkK5sDkUZiKDxqGB5jBIOVm1VsPCON6QpFRtM",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "b4-read-line-master",
+      "name": "Read line_master",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [690, 600],
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "1ailXsbVux_5RCDBhXgVmiBLkH1c09_yn-2WliHN2sgc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "b5-merge-data",
+      "name": "Merge: 데이터 결합",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 500],
+      "parameters": {
+        "jsCode": "// Merge: production_week + line_master + run_id\nconst productionItems = $(\u0027Read production_week\u0027).all();\nconst lineMasterItems = $(\u0027Read line_master\u0027).all();\nconst runIdItem = $(\u0027Code 0: run_id 생성\u0027).first();\n\nconst productionRows = productionItems.map(item =\u003e item.json);\nconst lineMaster = lineMasterItems.map(item =\u003e item.json);\nconst run_id = runIdItem.json.run_id;\n\nreturn [{ json: { productionRows, lineMaster, run_id } }];"
+      }
+    },
+    {
+      "id": "b6-code1-validate",
+      "name": "Code 1: 데이터 검증",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1130, 500],
+      "parameters": {
+        "jsCode": "// Code Node 1: 데이터 검증\n// 입력: Google Sheets에서 읽은 production_week + line_master (items로 전달)\n// 출력: validRows + warnings + run_id\n\nconst input = items[0].json;\nconst productionRows = input.productionRows;\nconst lineMaster = input.lineMaster;\nconst run_id = input.run_id;\n\nconst NUMERIC_FIELDS = [\n  \u0027일일목표\u0027, \u0027시간당생산\u0027, \u0027시간당양품\u0027, \u0027시간당불량\u0027, \u0027시간당폐기\u0027, \u0027시간당불량률(%)\u0027,\n  \u0027누적생산\u0027, \u0027누적양품\u0027, \u0027누적불량\u0027, \u0027누적폐기\u0027, \u0027누적불량률(%)\u0027,\n  \u0027달성률(%)\u0027, \u0027예상달성률(%)\u0027, \u0027달성갭(%p)\u0027,\n  \u0027시간당가동(분)\u0027, \u0027시간당비가동(분)\u0027, \u0027시간당가동률(%)\u0027, \u0027누적가동률(%)\u0027\n];\n\nconst REQUIRED_COLUMNS = [\n  \u0027날짜\u0027, \u0027시간\u0027, \u0027라인ID\u0027, \u0027라인명\u0027, \u0027팀\u0027, \u0027생산품목\u0027, \u0027일일목표\u0027,\n  \u0027시간당생산\u0027, \u0027시간당양품\u0027, \u0027시간당불량\u0027, \u0027시간당폐기\u0027, \u0027시간당불량률(%)\u0027,\n  \u0027누적생산\u0027, \u0027누적양품\u0027, \u0027누적불량\u0027, \u0027누적폐기\u0027, \u0027누적불량률(%)\u0027,\n  \u0027달성률(%)\u0027, \u0027예상달성률(%)\u0027, \u0027달성갭(%p)\u0027,\n  \u0027시간당가동(분)\u0027, \u0027시간당비가동(분)\u0027, \u0027시간당가동률(%)\u0027, \u0027누적가동률(%)\u0027,\n  \u0027이상플래그\u0027\n];\n\nif (!productionRows || productionRows.length === 0) {\n  return [{ json: { valid: false, error: \u0027데이터가 비어 있습니다\u0027, validRows: [], warnings: [], run_id } }];\n}\n\nconst firstRow = productionRows[0];\nconst missingCols = REQUIRED_COLUMNS.filter(col =\u003e !(col in firstRow));\nif (missingCols.length \u003e 0) {\n  return [{ json: { valid: false, error: `필수 컬럼 누락: ${missingCols.join(\u0027, \u0027)}`, validRows: [], warnings: [], run_id } }];\n}\n\nconst lineMasterIds = new Set(lineMaster.map(lm =\u003e lm[\u0027라인ID\u0027]));\nconst validRows = [];\nconst warnings = [];\n\nfor (const row of productionRows) {\n  const lineId = row[\u0027라인ID\u0027];\n  const hour = row[\u0027시간\u0027];\n\n  if (!lineId || lineId === \u0027\u0027) {\n    warnings.push({ type: \u0027missing_line_id\u0027, hour, message: \u0027라인ID가 비어 있는 행 발견\u0027 });\n    continue;\n  }\n\n  if (!lineMasterIds.has(lineId)) {\n    warnings.push({ type: \u0027unknown_line\u0027, lineId, hour, message: `line_master에 없는 라인: ${lineId}` });\n    continue;\n  }\n\n  const nullFields = NUMERIC_FIELDS.filter(f =\u003e {\n    const val = row[f];\n    return val === null || val === undefined || val === \u0027\u0027;\n  });\n\n  if (nullFields.length \u003e 0) {\n    warnings.push({\n      type: \u0027null_fields\u0027, lineId, hour, fields: nullFields,\n      message: `${lineId} ${hour}: 빈 필드 ${nullFields.length}개`\n    });\n    continue;\n  }\n\n  const parsed = { ...row };\n  let typeError = false;\n  for (const f of NUMERIC_FIELDS) {\n    const num = parseFloat(parsed[f]);\n    if (isNaN(num)) {\n      warnings.push({ type: \u0027type_error\u0027, lineId, hour, field: f, message: `${lineId} ${hour}: ${f} 값이 숫자가 아님` });\n      typeError = true;\n      break;\n    }\n    parsed[f] = num;\n  }\n\n  if (!typeError) {\n    validRows.push(parsed);\n  }\n}\n\nconst hours = [...new Set(validRows.map(r =\u003e r[\u0027시간\u0027]))].sort();\nconst currentHour = hours.length \u003e 0 ? hours[hours.length - 1] : null;\nconst currentRows = currentHour ? validRows.filter(r =\u003e r[\u0027시간\u0027] === currentHour) : [];\n\nfor (const lm of lineMaster) {\n  if (currentHour \u0026\u0026 !currentRows.find(r =\u003e r[\u0027라인ID\u0027] === lm[\u0027라인ID\u0027])) {\n    warnings.push({\n      type: \u0027missing_line\u0027, lineId: lm[\u0027라인ID\u0027], lineName: lm[\u0027라인명\u0027], hour: currentHour,\n      message: `${lm[\u0027라인명\u0027]}(${lm[\u0027라인ID\u0027]}): ${currentHour} 데이터 없음`\n    });\n  }\n}\n\nreturn [{ json: { valid: true, validRows, warnings, run_id, lineMaster } }];"
+      }
+    },
+    {
+      "id": "b7-code2-detect",
+      "name": "Code 2: 이상 탐지",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1350, 500],
+      "parameters": {
+        "jsCode": "// Code Node 2: 이상 탐지 + hourly_summary 생성\n// 입력: Code 1에서 전달된 validRows, lineMaster, run_id\n// 출력: anomalies + hourly_summary\n\nconst input = items[0].json;\nconst productionRows = input.validRows;\nconst lineMaster = input.lineMaster;\nconst run_id = input.run_id;\n\nconst rules = [\n  { id: \"rule_01\", name: \"생산량 급감\", type: \"drop_rate\", target: \"시간당생산\", compare_with: \"previous_hour\", levels: [{ severity: \"심각\", min: 40, max: null },{ severity: \"중간\", min: 20, max: 40 },{ severity: \"낮음\", min: 5, max: 20 }], message: \"{line_name}: 생산량 {value}% 감소 (이전 {prev} → 현재 {curr})\" },\n  { id: \"rule_02\", name: \"가동률 저하\", type: \"below_threshold\", target: \"시간당가동률(%)\", levels: [{ severity: \"심각\", min: null, max: 30 },{ severity: \"중간\", min: 30, max: 50 },{ severity: \"낮음\", min: 50, max: 70 }], message: \"{line_name}: 가동률 {value}% (기준 미달)\" },\n  { id: \"rule_03\", name: \"불량률 급등\", type: \"exceeds_baseline\", target: \"시간당불량률(%)\", baseline_field: \"정상불량률\", levels: [{ severity: \"심각\", min: 5, max: null },{ severity: \"중간\", min: 3, max: 5 },{ severity: \"낮음\", min: 2, max: 3 }], message: \"{line_name}: 불량률 {value}% (정상의 {ratio}배, 기준 {baseline}%)\" },\n  { id: \"rule_04\", name: \"달성률 지연\", type: \"below_threshold\", target: \"달성갭(%p)\", levels: [{ severity: \"심각\", min: null, max: -30 },{ severity: \"중간\", min: -30, max: -15 },{ severity: \"낮음\", min: -15, max: -5 }], message: \"{line_name}: 달성갭 {value}%p (예상 대비 지연)\" },\n  { id: \"rule_05\", name: \"생산 정체\", type: \"consecutive_zero\", target: \"시간당생산\", levels: [{ severity: \"심각\", min: 3, max: null },{ severity: \"중간\", min: 2, max: 3 },{ severity: \"낮음\", min: 1, max: 2 }], message: \"{line_name}: 생산 {value}시간 연속 0 (설비 정지 의심)\" },\n  { id: \"rule_06\", name: \"폐기 발생\", type: \"above_threshold\", target: \"시간당폐기\", rate_base: \"시간당생산\", levels: [{ severity: \"심각\", min: 3, max: null },{ severity: \"중간\", min: 1, max: 3 },{ severity: \"낮음\", min: 0.1, max: 1 }], message: \"{line_name}: 폐기율 {value}% ({scrap}개/{production}개)\" },\n  { id: \"rule_07\", name: \"복합 이상\", type: \"compound\", operator: \"AND\", conditions: [{ target: \"시간당생산\", compare_type: \"drop_rate\", compare_with: \"previous_hour\", levels: [{ severity: \"심각\", min: 30, max: null },{ severity: \"중간\", min: 15, max: 30 },{ severity: \"낮음\", min: 5, max: 15 }] },{ target: \"시간당불량률(%)\", compare_type: \"exceeds_baseline\", baseline_field: \"정상불량률\", levels: [{ severity: \"심각\", min: 3, max: null },{ severity: \"중간\", min: 2, max: 3 },{ severity: \"낮음\", min: 1.5, max: 2 }] }], message: \"{line_name}: 복합 이상 — 생산 {drop}% 감소 + 불량 {ratio}배 증가\" },\n  { id: \"rule_08\", name: \"가동률 급락\", type: \"drop_points\", target: \"시간당가동률(%)\", compare_with: \"previous_hour\", levels: [{ severity: \"심각\", min: 50, max: null },{ severity: \"중간\", min: 30, max: 50 },{ severity: \"낮음\", min: 15, max: 30 }], message: \"{line_name}: 가동률 {value}%p 급락 (이전 {prev}% → 현재 {curr}%)\" }\n];\n\n// --- 유틸 함수 ---\nfunction getLastTwoHours(rows) {\n  const hours = [...new Set(rows.map(r =\u003e r[\u0027시간\u0027]))].sort();\n  if (hours.length \u003c 1) return { current: [], previous: [], currentHour: null, previousHour: null };\n  const currentHour = hours[hours.length - 1];\n  const previousHour = hours.length \u003e= 2 ? hours[hours.length - 2] : null;\n  return {\n    current: rows.filter(r =\u003e r[\u0027시간\u0027] === currentHour),\n    previous: previousHour ? rows.filter(r =\u003e r[\u0027시간\u0027] === previousHour) : [],\n    currentHour, previousHour\n  };\n}\n\nfunction getConsecutiveZeros(rows, lineId, targetField) {\n  const lineRows = rows.filter(r =\u003e r[\u0027라인ID\u0027] === lineId).sort((a, b) =\u003e a[\u0027시간\u0027].localeCompare(b[\u0027시간\u0027]));\n  let count = 0;\n  for (let i = lineRows.length - 1; i \u003e= 0; i--) {\n    if (parseFloat(lineRows[i][targetField]) === 0) count++;\n    else break;\n  }\n  return count;\n}\n\nfunction matchLevel(value, levels) {\n  for (const level of levels) {\n    const { min, max } = level;\n    if (min === null \u0026\u0026 max === null) continue;\n    if (min === null) { if (value \u003c max) return level; }\n    else if (max === null) { if (value \u003e= min) return level; }\n    else { if (value \u003e= min \u0026\u0026 value \u003c max) return level; }\n  }\n  return null;\n}\n\nfunction fmt(template, params) {\n  let msg = template;\n  for (const [key, val] of Object.entries(params)) { msg = msg.split(`{${key}}`).join(val); }\n  return msg;\n}\n\nfunction evaluateRule(rule, row, prevRow, master, allRows, lineId) {\n  if (rule.type === \u0027compound\u0027) {\n    if (rule.operator !== \u0027AND\u0027) return null;\n    const results = [];\n    for (const cond of rule.conditions) {\n      let val = null;\n      if (cond.compare_type === \u0027drop_rate\u0027) {\n        if (!prevRow) return null;\n        const curr = parseFloat(row[cond.target]), prev = parseFloat(prevRow[cond.target]);\n        if (isNaN(curr) || isNaN(prev) || prev === 0) return null;\n        val = ((prev - curr) / prev) * 100;\n        if (val \u003c= 0) return null;\n      } else if (cond.compare_type === \u0027exceeds_baseline\u0027) {\n        const v = parseFloat(row[cond.target]), bl = parseFloat(master[cond.baseline_field]);\n        if (isNaN(v) || isNaN(bl) || bl === 0) return null;\n        val = v / bl;\n      }\n      if (val === null) return null;\n      const level = matchLevel(val, cond.levels);\n      if (!level) return null;\n      results.push({ severity: level.severity, value: val });\n    }\n    if (results.length !== rule.conditions.length) return null;\n    const sOrder = { \u0027심각\u0027: 0, \u0027중간\u0027: 1, \u0027낮음\u0027: 2 };\n    const worst = results.reduce((w, r) =\u003e sOrder[r.severity] \u003c sOrder[w] ? r.severity : w, \u0027낮음\u0027);\n    return { severity: worst, message: fmt(rule.message, { line_name: row[\u0027라인명\u0027], drop: results[0].value.toFixed(1), ratio: results[1].value.toFixed(1) }) };\n  }\n\n  if (rule.type === \u0027drop_rate\u0027) {\n    if (!prevRow) return null;\n    const curr = parseFloat(row[rule.target]), prev = parseFloat(prevRow[rule.target]);\n    if (isNaN(curr) || isNaN(prev) || prev === 0) return null;\n    const dropRate = ((prev - curr) / prev) * 100;\n    if (dropRate \u003c= 0) return null;\n    const level = matchLevel(dropRate, rule.levels);\n    if (!level) return null;\n    return { severity: level.severity, message: fmt(rule.message, { line_name: row[\u0027라인명\u0027], value: dropRate.toFixed(1), prev, curr }) };\n  }\n\n  if (rule.type === \u0027below_threshold\u0027) {\n    const val = parseFloat(row[rule.target]);\n    if (isNaN(val)) return null;\n    const level = matchLevel(val, rule.levels);\n    if (!level) return null;\n    return { severity: level.severity, message: fmt(rule.message, { line_name: row[\u0027라인명\u0027], value: val.toFixed(1) }) };\n  }\n\n  if (rule.type === \u0027exceeds_baseline\u0027) {\n    const val = parseFloat(row[rule.target]), bl = parseFloat(master[rule.baseline_field]);\n    if (isNaN(val) || isNaN(bl) || bl === 0) return null;\n    const ratio = val / bl;\n    const level = matchLevel(ratio, rule.levels);\n    if (!level) return null;\n    return { severity: level.severity, message: fmt(rule.message, { line_name: row[\u0027라인명\u0027], value: val.toFixed(1), ratio: ratio.toFixed(1), baseline: bl.toFixed(1) }) };\n  }\n\n  if (rule.type === \u0027above_threshold\u0027) {\n    const scrap = parseFloat(row[rule.target]), prod = parseFloat(row[rule.rate_base]);\n    if (isNaN(scrap) || isNaN(prod) || prod === 0) return null;\n    const rate = (scrap / prod) * 100;\n    const level = matchLevel(rate, rule.levels);\n    if (!level) return null;\n    return { severity: level.severity, message: fmt(rule.message, { line_name: row[\u0027라인명\u0027], value: rate.toFixed(1), scrap, production: prod }) };\n  }\n\n  if (rule.type === \u0027consecutive_zero\u0027) {\n    const count = getConsecutiveZeros(allRows, lineId, rule.target);\n    if (count === 0) return null;\n    const level = matchLevel(count, rule.levels);\n    if (!level) return null;\n    return { severity: level.severity, message: fmt(rule.message, { line_name: row[\u0027라인명\u0027], value: count }) };\n  }\n\n  if (rule.type === \u0027drop_points\u0027) {\n    if (!prevRow) return null;\n    const curr = parseFloat(row[rule.target]), prev = parseFloat(prevRow[rule.target]);\n    if (isNaN(curr) || isNaN(prev)) return null;\n    const drop = prev - curr;\n    if (drop \u003c= 0) return null;\n    const level = matchLevel(drop, rule.levels);\n    if (!level) return null;\n    return { severity: level.severity, message: fmt(rule.message, { line_name: row[\u0027라인명\u0027], value: drop.toFixed(1), prev: prev.toFixed(1), curr: curr.toFixed(1) }) };\n  }\n\n  return null;\n}\n\n// --- 메인 로직 ---\nconst { current, previous, currentHour, previousHour } = getLastTwoHours(productionRows);\n\nif (current.length === 0) {\n  return [{ json: { anomalies: [], hourly_summary: [], currentHour: null, run_id, lineMaster, warnings: input.warnings } }];\n}\n\nconst lineMasterMap = {};\nfor (const lm of lineMaster) { lineMasterMap[lm[\u0027라인ID\u0027]] = lm; }\n\nconst anomalies = [];\nfor (const row of current) {\n  const lineId = row[\u0027라인ID\u0027];\n  const master = lineMasterMap[lineId];\n  if (!master) continue;\n  const prevRow = previous.find(r =\u003e r[\u0027라인ID\u0027] === lineId);\n\n  for (const rule of rules) {\n    try {\n      const result = evaluateRule(rule, row, prevRow, master, productionRows, lineId);\n      if (result) {\n        anomalies.push({\n          날짜: row[\u0027날짜\u0027], 시간: currentHour, 라인ID: lineId, 라인명: row[\u0027라인명\u0027],\n          팀: row[\u0027팀\u0027], 품목: row[\u0027생산품목\u0027], type: rule.name, severity: result.severity,\n          detail: result.message, rule_id: rule.id\n        });\n      }\n    } catch (e) { /* 해당 룰 스킵 */ }\n  }\n}\n\n// hourly_summary 생성\nconst teams = [...new Set(current.map(r =\u003e r[\u0027팀\u0027]))];\nconst date = current[0]?.[\u0027날짜\u0027] || \u0027\u0027;\nconst hourly_summary = teams.map(team =\u003e {\n  const teamRows = current.filter(r =\u003e r[\u0027팀\u0027] === team);\n  const planTotal = teamRows.reduce((s, r) =\u003e s + (parseFloat(r[\u0027일일목표\u0027]) || 0), 0);\n  const actualTotal = teamRows.reduce((s, r) =\u003e s + (parseFloat(r[\u0027시간당생산\u0027]) || 0), 0);\n  const defectTotal = teamRows.reduce((s, r) =\u003e s + (parseFloat(r[\u0027시간당불량\u0027]) || 0), 0);\n  const scrapTotal = teamRows.reduce((s, r) =\u003e s + (parseFloat(r[\u0027시간당폐기\u0027]) || 0), 0);\n  const uptimeSum = teamRows.reduce((s, r) =\u003e s + (parseFloat(r[\u0027시간당가동(분)\u0027]) || 0), 0);\n  const downtimeSum = teamRows.reduce((s, r) =\u003e s + (parseFloat(r[\u0027시간당비가동(분)\u0027]) || 0), 0);\n  const avgUptime = teamRows.length \u003e 0 ? (uptimeSum / (uptimeSum + downtimeSum)) * 100 : 0;\n  const achieveRate = planTotal \u003e 0 ? (actualTotal / planTotal) * 100 : 0;\n  return {\n    날짜: date, 시간: currentHour, 팀: team, 작업건수: teamRows.length, 계획합계: planTotal,\n    실적합계: actualTotal, \u0027달성률(%)\u0027: Math.round(achieveRate * 100) / 100, 불량합계: defectTotal,\n    폐기합계: scrapTotal, \u0027평균가동률(%)\u0027: Math.round(avgUptime * 100) / 100, \u0027비가동합계(분)\u0027: downtimeSum\n  };\n});\n\nreturn [{ json: { anomalies, hourly_summary, currentHour, run_id, lineMaster, warnings: input.warnings } }];"
+      }
+    },
+    {
+      "id": "b8-append-hourly-summary",
+      "name": "Append hourly_summary",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1570, 400],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1VAztXgQjDGP6tJBg9ClOCR7Mmhuv95-P0HbIAA3hlTo",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "hourly_summary",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "b8b-extract-hourly",
+      "name": "Extract hourly_summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1570, 500],
+      "parameters": {
+        "jsCode": "// Extract hourly_summary rows for Google Sheets append\nconst input = items[0].json;\nconst rows = input.hourly_summary || [];\nif (rows.length === 0) return [{ json: { empty: true } }];\nreturn rows.map(r => ({ json: r }));"
+      }
+    },
+    {
+      "id": "b9-read-anomaly-log",
+      "name": "Read anomaly_log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1570, 600],
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "1VAztXgQjDGP6tJBg9ClOCR7Mmhuv95-P0HbIAA3hlTo",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "anomaly_log",
+          "mode": "list"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "b10-merge-anomaly",
+      "name": "Merge: 이상 + 이력 결합",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1790, 500],
+      "parameters": {
+        "jsCode": "// Merge: anomalies from Code 2 + historical anomaly_log\nconst anomalyData = $(\u0027Code 2: 이상 탐지\u0027).first();\nconst historicalItems = $(\u0027Read anomaly_log\u0027).all();\n\nconst historicalLog = historicalItems.map(item =\u003e item.json);\n\nreturn [{ json: {\n  anomalies: anomalyData.json.anomalies,\n  historicalLog,\n  run_id: anomalyData.json.run_id,\n  currentHour: anomalyData.json.currentHour,\n  lineMaster: anomalyData.json.lineMaster,\n  warnings: anomalyData.json.warnings,\n  hourly_summary: anomalyData.json.hourly_summary\n} }];"
+      }
+    },
+    {
+      "id": "b11-code3-classify",
+      "name": "Code 3: 패턴 분류",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2010, 500],
+      "parameters": {
+        "jsCode": "// Code Node 3: 패턴 분류 + idempotency_key + 중복 알림 방지\n// 입력: Code 2의 anomalies + Google Sheets에서 읽은 anomaly_log 이력\n// 출력: 분류된 anomalies + notification 판정\n\nconst input = items[0].json;\nconst newAnomalies = input.anomalies;\nconst historicalLog = input.historicalLog || [];\nconst run_id = input.run_id;\nconst currentHour = input.currentHour;\nconst lineMaster = input.lineMaster;\nconst warnings = input.warnings || [];\nconst hourly_summary = input.hourly_summary;\n\nif (!newAnomalies || newAnomalies.length === 0) {\n  return [{ json: { classifiedAnomalies: [], run_id, currentHour, lineMaster, warnings, hourly_summary, hasSevere: false, hasMedium: false } }];\n}\n\n// --- idempotency_key 생성 + 중복 제거 ---\nconst existingKeys = new Set(historicalLog.filter(e =\u003e e.idempotency_key).map(e =\u003e e.idempotency_key));\nconst deduplicated = [];\nfor (const a of newAnomalies) {\n  const key = `${a[\u0027라인ID\u0027]}_${a.rule_id}_${a[\u0027날짜\u0027]}_${a[\u0027시간\u0027]}`;\n  a.idempotency_key = key;\n  if (!existingKeys.has(key)) {\n    deduplicated.push(a);\n  }\n}\n\n// --- 패턴 분류 ---\nconst severityOrder = { \u0027낮음\u0027: 0, \u0027중간\u0027: 1, \u0027심각\u0027: 2 };\n\nconst classified = deduplicated.map(anomaly =\u003e {\n  const history = historicalLog.filter(h =\u003e h[\u0027라인ID\u0027] === anomaly[\u0027라인ID\u0027] \u0026\u0026 h[\u0027type\u0027] === anomaly.type);\n  const count = history.length;\n  let patternType;\n\n  if (count === 0) {\n    patternType = \u0027신규\u0027;\n  } else if (count \u003c= 2) {\n    patternType = \u0027반복\u0027;\n    // 심각도 상승 추세 확인\n    const sorted = [...history].sort((a, b) =\u003e `${a[\u0027날짜\u0027]} ${a[\u0027시간\u0027]}`.localeCompare(`${b[\u0027날짜\u0027]} ${b[\u0027시간\u0027]}`));\n    if (sorted.length \u003e= 2) {\n      const levels = sorted.slice(-2).map(h =\u003e severityOrder[h.severity] || 0);\n      const currentLevel = severityOrder[anomaly.severity] || 0;\n      if (levels[1] \u003e levels[0] || currentLevel \u003e levels[1]) {\n        patternType = \u0027악화\u0027;\n      }\n    }\n  } else {\n    patternType = \u0027악화\u0027;\n  }\n\n  let finalSeverity = anomaly.severity;\n  const originalSeverity = anomaly.severity;\n  if (patternType === \u0027악화\u0027 \u0026\u0026 (anomaly.severity === \u0027낮음\u0027 || anomaly.severity === \u0027중간\u0027)) {\n    finalSeverity = \u0027심각\u0027;\n  }\n\n  return {\n    ...anomaly,\n    severity: finalSeverity,\n    original_severity: originalSeverity,\n    pattern_type: patternType,\n    recurrence_count: count,\n    run_id,\n    notification_status: \u0027pending\u0027\n  };\n});\n\n// --- 중복 알림 방지 (Static Data) ---\nconst staticData = $getWorkflowStaticData(\u0027global\u0027);\nconst alertHistory = staticData.alertHistory || {};\nconst now = new Date().toISOString();\n\nfor (const a of classified) {\n  const alertKey = `${a[\u0027라인ID\u0027]}_${a.type}`;\n  const lastAlert = alertHistory[alertKey];\n\n  if (a.severity === \u0027심각\u0027) {\n    if (lastAlert) {\n      const elapsed = (new Date(now) - new Date(lastAlert)) / 1000 / 60;\n      if (elapsed \u003c 60) {\n        a.notification_status = \u0027skipped\u0027;\n      } else {\n        alertHistory[alertKey] = now;\n      }\n    } else {\n      alertHistory[alertKey] = now;\n    }\n  } else if (a.severity === \u0027중간\u0027) {\n    if (lastAlert) {\n      const lastDate = lastAlert.slice(0, 13);\n      const nowDate = now.slice(0, 13);\n      if (lastDate === nowDate) {\n        a.notification_status = \u0027skipped\u0027;\n      } else {\n        alertHistory[alertKey] = now;\n      }\n    } else {\n      alertHistory[alertKey] = now;\n    }\n  } else {\n    a.notification_status = \u0027skipped\u0027;\n  }\n}\n\nstaticData.alertHistory = alertHistory;\n\nconst toNotify = classified.filter(a =\u003e a.notification_status === \u0027pending\u0027);\nconst hasSevere = toNotify.some(a =\u003e a.severity === \u0027심각\u0027 || a.pattern_type === \u0027악화\u0027);\nconst hasMedium = toNotify.some(a =\u003e a.severity === \u0027중간\u0027);\n\nreturn [{ json: {\n  classifiedAnomalies: classified,\n  toNotify,\n  run_id, currentHour, lineMaster, warnings, hourly_summary,\n  hasSevere, hasMedium\n} }];"
+      }
+    },
+    {
+      "id": "b12-append-anomaly-log",
+      "name": "Append anomaly_log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [2230, 500],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1VAztXgQjDGP6tJBg9ClOCR7Mmhuv95-P0HbIAA3hlTo",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "anomaly_log",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "b12b-extract-anomaly",
+      "name": "Extract anomaly rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2230, 400],
+      "parameters": {
+        "jsCode": "// Extract classified anomaly rows for append\nconst input = items[0].json;\nconst rows = input.classifiedAnomalies || [];\nif (rows.length === 0) return [{ json: { empty: true } }];\nreturn rows.map(r => ({ json: r }));"
+      }
+    },
+    {
+      "id": "b13-if-severe",
+      "name": "IF: hasSevere",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2450, 500],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-severe",
+              "leftValue": "={{ $json.hasSevere }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "b14-code4-mask",
+      "name": "Code 4: 마스킹 + 프롬프트",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2670, 300],
+      "parameters": {
+        "jsCode": "// Code Node 4: 마스킹 + Claude API 프롬프트 조합\n// 입력: 심각/악화 이상 목록 + lineMaster\n// 출력: 마스킹된 프롬프트 + maskDict (언마스킹용)\n\nconst input = items[0].json;\nconst toNotify = input.toNotify;\nconst lineMaster = input.lineMaster;\nconst run_id = input.run_id;\nconst warnings = input.warnings || [];\nconst hourly_summary = input.hourly_summary;\nconst classifiedAnomalies = input.classifiedAnomalies;\n\n// 심각 또는 악화 건만 AI 분석 대상\nconst aiTargets = toNotify\n  .filter(a =\u003e a.severity === \u0027심각\u0027 || a.pattern_type === \u0027악화\u0027)\n  .sort((a, b) =\u003e {\n    const sOrder = { \u0027심각\u0027: 0, \u0027중간\u0027: 1, \u0027낮음\u0027: 2 };\n    const pOrder = { \u0027악화\u0027: 0, \u0027반복\u0027: 1, \u0027신규\u0027: 2 };\n    if (sOrder[a.severity] !== sOrder[b.severity]) return sOrder[a.severity] - sOrder[b.severity];\n    return (pOrder[a.pattern_type] || 2) - (pOrder[b.pattern_type] || 2);\n  })\n  .slice(0, 5);\n\nif (aiTargets.length === 0) {\n  return [{ json: { skipAI: true, toNotify, classifiedAnomalies, run_id, warnings, hourly_summary, lineMaster } }];\n}\n\n// --- 마스킹 사전 생성 ---\nconst maskDict = {};\nconst reverseDict = {};\nlineMaster.forEach((lm, i) =\u003e {\n  const lineCode = `LINE_${String.fromCharCode(65 + i)}`;\n  const productCode = `PROD_${String(i + 1).padStart(2, \u00270\u0027)}`;\n  const teamCode = `TEAM_${lm[\u0027팀\u0027].replace(/[^0-9]/g, \u0027\u0027)}`;\n  maskDict[lm[\u0027라인명\u0027]] = lineCode;\n  maskDict[lm[\u0027품목\u0027]] = productCode;\n  maskDict[lm[\u0027팀\u0027]] = teamCode;\n  reverseDict[lineCode] = lm[\u0027라인명\u0027];\n  reverseDict[productCode] = lm[\u0027품목\u0027];\n  reverseDict[teamCode] = lm[\u0027팀\u0027];\n});\n\nfunction applyMask(text) {\n  let masked = text;\n  const sortedKeys = Object.keys(maskDict).sort((a, b) =\u003e b.length - a.length);\n  for (const original of sortedKeys) { masked = masked.split(original).join(maskDict[original]); }\n  return masked;\n}\n\n// --- 마스킹된 이상 목록 ---\nconst maskedTargets = aiTargets.map((a, idx) =\u003e ({\n  id: idx + 1,\n  line: maskDict[a[\u0027라인명\u0027]] || a[\u0027라인명\u0027],\n  product: maskDict[a[\u0027품목\u0027]] || a[\u0027품목\u0027],\n  type: a.type,\n  severity: a.severity,\n  pattern: a.pattern_type,\n  recurrence: a.recurrence_count,\n  detail: applyMask(a.detail)\n}));\n\n// --- Claude API 프롬프트 ---\nconst systemPrompt = `당신은 제조 현장 이상 탐지 분석 전문가입니다.\n다음 이상 건들을 분석하고 JSON 형식으로 응답해주세요.\n응답에서 반드시 제공된 코드(LINE_A, PROD_01 등)를 사용하세요.\n실제 이름은 사용하지 마세요.\n\n출력 형식:\n{\n  \"anomalies\": [\n    {\n      \"id\": 번호,\n      \"summary\": \"한 줄 요약\",\n      \"root_cause\": \"추정 원인\",\n      \"action\": \"권장 조치\",\n      \"pattern_verification\": \"동의\" 또는 \"보정: 이유\",\n      \"cross_impact\": \"다른 라인에 미치는 영향 (없으면 \u0027없음\u0027)\"\n    }\n  ],\n  \"overall_assessment\": \"전체 상황 종합 평가\"\n}`;\n\nconst userPrompt = `다음 ${maskedTargets.length}건의 이상을 분석해주세요:\\n\\n${JSON.stringify(maskedTargets, null, 2)}`;\n\nconst requestBody = {\n  model: \"claude-sonnet-4-20250514\",\n  max_tokens: 2000,\n  system: systemPrompt,\n  messages: [{ role: \"user\", content: userPrompt }]\n};\n\nreturn [{ json: {\n  skipAI: false,\n  requestBody,\n  reverseDict,\n  aiTargets,\n  toNotify,\n  classifiedAnomalies,\n  run_id, warnings, hourly_summary, lineMaster\n} }];"
+      }
+    },
+    {
+      "id": "b15-http-claude",
+      "name": "HTTP Request: Claude API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2890, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.requestBody) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLACEHOLDER",
+          "name": "Claude API Key"
+        }
+      }
+    },
+    {
+      "id": "b16-merge-api",
+      "name": "Merge: API 응답 결합",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3110, 300],
+      "parameters": {
+        "jsCode": "// Merge Claude API response with Code 4 data\nconst code4Data = $(\u0027Code 4: 마스킹 + 프롬프트\u0027).first();\nconst apiResponse = $(\u0027HTTP Request: Claude API\u0027).first();\n\nreturn [{ json: {\n  ...code4Data.json,\n  apiResponse: apiResponse.json\n} }];"
+      }
+    },
+    {
+      "id": "b17-code5-parse",
+      "name": "Code 5: AI 파싱 + 이메일",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3330, 300],
+      "parameters": {
+        "jsCode": "// Code Node 5: AI 응답 파싱 + 언마스킹 + 이메일 본문 생성\n// 입력: Claude API 응답 + reverseDict + 이상 목록\n// 출력: anomaly_log 업데이트 데이터 + 이메일 본문\n\nconst input = items[0].json;\nconst reverseDict = input.reverseDict || {};\nconst aiTargets = input.aiTargets || [];\nconst toNotify = input.toNotify || [];\nconst classifiedAnomalies = input.classifiedAnomalies || [];\nconst run_id = input.run_id;\nconst warnings = input.warnings || [];\nconst skipAI = input.skipAI || false;\n\n// --- 언마스킹 함수 ---\nfunction applyUnmask(text) {\n  let unmasked = text;\n  const sortedKeys = Object.keys(reverseDict).sort((a, b) =\u003e b.length - a.length);\n  for (const code of sortedKeys) { unmasked = unmasked.split(code).join(reverseDict[code]); }\n  return unmasked;\n}\n\n// --- AI 응답 파싱 ---\nlet aiResult = null;\nlet aiParsed = false;\n\nif (!skipAI \u0026\u0026 input.apiResponse) {\n  const rawText = input.apiResponse.content?.[0]?.text || \u0027\u0027;\n  try {\n    const jsonMatch = rawText.replace(/```json\\n?/g, \u0027\u0027).replace(/```\\n?/g, \u0027\u0027);\n    aiResult = JSON.parse(jsonMatch);\n    aiParsed = true;\n  } catch (e) {\n    aiResult = { raw_text: rawText };\n    aiParsed = false;\n  }\n}\n\n// --- anomaly_log에 AI 해석 반영 ---\nfor (const a of classifiedAnomalies) {\n  if (aiParsed \u0026\u0026 aiResult?.anomalies) {\n    const targetIdx = aiTargets.findIndex(t =\u003e t[\u0027라인ID\u0027] === a[\u0027라인ID\u0027] \u0026\u0026 t.type === a.type);\n    if (targetIdx \u003e= 0) {\n      const aiEntry = aiResult.anomalies.find(e =\u003e e.id === targetIdx + 1);\n      if (aiEntry) {\n        const insight = [\n          aiEntry.summary,\n          `원인: ${aiEntry.root_cause}`,\n          `조치: ${aiEntry.action}`,\n          `패턴검증: ${aiEntry.pattern_verification}`,\n          aiEntry.cross_impact !== \u0027없음\u0027 ? `교차영향: ${aiEntry.cross_impact}` : \u0027\u0027\n        ].filter(Boolean).join(\u0027 | \u0027);\n        a.ai_insight = applyUnmask(insight);\n        a.ai_parsed = true;\n      }\n    }\n  } else if (!skipAI \u0026\u0026 !aiParsed \u0026\u0026 aiResult?.raw_text) {\n    const targetIdx = aiTargets.findIndex(t =\u003e t[\u0027라인ID\u0027] === a[\u0027라인ID\u0027] \u0026\u0026 t.type === a.type);\n    if (targetIdx \u003e= 0) {\n      a.ai_insight = applyUnmask(aiResult.raw_text);\n      a.ai_parsed = false;\n    }\n  }\n\n  if (!a.ai_insight) {\n    a.ai_insight = \u0027\u0027;\n    a.ai_parsed = false;\n  }\n}\n\n// --- 이메일 본문 생성 ---\nconst severeList = toNotify.filter(a =\u003e a.severity === \u0027심각\u0027);\nconst mediumList = toNotify.filter(a =\u003e a.severity === \u0027중간\u0027);\nconst lowList = classifiedAnomalies.filter(a =\u003e a.severity === \u0027낮음\u0027);\n\nlet emailSubject = \u0027\u0027;\nlet emailBody = \u0027\u0027;\n\nif (severeList.length \u003e 0 || mediumList.length \u003e 0) {\n  emailSubject = `[생산 이상 알림] ${severeList.length \u003e 0 ? \u0027🔴 심각 \u0027 + severeList.length + \u0027건\u0027 : \u0027\u0027}${mediumList.length \u003e 0 ? \u0027 🟡 중간 \u0027 + mediumList.length + \u0027건\u0027 : \u0027\u0027} (${run_id})`;\n\n  const parts = [];\n\n  if (warnings.length \u003e 0) {\n    parts.push(\u0027\u003ch3\u003e⚠️ 데이터 경고\u003c/h3\u003e\u0027);\n    parts.push(\u0027\u003cul\u003e\u0027 + warnings.map(w =\u003e `\u003cli\u003e${w.message}\u003c/li\u003e`).join(\u0027\u0027) + \u0027\u003c/ul\u003e\u0027);\n    parts.push(\u0027\u003chr\u003e\u0027);\n  }\n\n  if (severeList.length \u003e 0) {\n    parts.push(\u0027\u003ch3\u003e🔴 심각\u003c/h3\u003e\u0027);\n    for (const a of severeList) {\n      const matched = classifiedAnomalies.find(c =\u003e c.idempotency_key === a.idempotency_key);\n      parts.push(`\u003cdiv style=\"margin-bottom:12px;padding:10px;border-left:4px solid #e74c3c;background:#fdf2f2;\"\u003e`);\n      parts.push(`\u003cb\u003e${a[\u0027라인명\u0027]} — ${a.type}\u003c/b\u003e (${a.pattern_type}, ${a.recurrence_count}회 발생)\u003cbr\u003e`);\n      parts.push(`${a.detail}\u003cbr\u003e`);\n      if (matched?.ai_insight) {\n        parts.push(`\u003cbr\u003e\u003cb\u003eAI 분석:\u003c/b\u003e ${matched.ai_insight}`);\n      }\n      parts.push(`\u003c/div\u003e`);\n    }\n  }\n\n  if (mediumList.length \u003e 0) {\n    parts.push(\u0027\u003ch3\u003e🟡 중간\u003c/h3\u003e\u0027);\n    for (const a of mediumList) {\n      parts.push(`\u003cdiv style=\"margin-bottom:8px;padding:8px;border-left:4px solid #f39c12;background:#fef9e7;\"\u003e`);\n      parts.push(`\u003cb\u003e${a[\u0027라인명\u0027]} — ${a.type}\u003c/b\u003e (${a.pattern_type})\u003cbr\u003e${a.detail}`);\n      parts.push(`\u003c/div\u003e`);\n    }\n  }\n\n  if (lowList.length \u003e 0) {\n    parts.push(\u0027\u003ch3\u003eℹ️ 참고 (낮음)\u003c/h3\u003e\u0027);\n    parts.push(\u0027\u003cul\u003e\u0027 + lowList.map(a =\u003e `\u003cli\u003e${a[\u0027라인명\u0027]}: ${a.type} — ${a.detail}\u003c/li\u003e`).join(\u0027\u0027) + \u0027\u003c/ul\u003e\u0027);\n  }\n\n  parts.push(`\u003chr\u003e\u003cp style=\"color:#888;font-size:12px;\"\u003erun_id: ${run_id} | 생성 시각: ${new Date().toISOString()}\u003c/p\u003e`);\n  emailBody = parts.join(\u0027\\n\u0027);\n}\n\n// --- anomaly_log 저장용 행 변환 ---\nconst anomalyLogRows = classifiedAnomalies.map(a =\u003e ({\n  날짜: a[\u0027날짜\u0027],\n  시간: a[\u0027시간\u0027],\n  라인ID: a[\u0027라인ID\u0027],\n  라인명: a[\u0027라인명\u0027],\n  팀: a[\u0027팀\u0027],\n  품목: a[\u0027품목\u0027],\n  type: a.type,\n  severity: a.severity,\n  detail: a.detail,\n  pattern_type: a.pattern_type,\n  recurrence_count: a.recurrence_count,\n  ai_insight: a.ai_insight || \u0027\u0027,\n  ai_parsed: a.ai_parsed || false,\n  run_id: a.run_id,\n  idempotency_key: a.idempotency_key,\n  notification_status: a.notification_status\n}));\n\nreturn [{ json: {\n  anomalyLogRows,\n  emailSubject,\n  emailBody,\n  sendEmail: (severeList.length \u003e 0 || mediumList.length \u003e 0),\n  hasSevere: severeList.length \u003e 0,\n  run_id\n} }];"
+      }
+    },
+    {
+      "id": "b18-gmail-severe",
+      "name": "Gmail: 심각 알림",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [3550, 300],
+      "parameters": {
+        "sendTo": "rodion45673@gmail.com",
+        "subject": "={{ $json.emailSubject }}",
+        "emailType": "html",
+        "message": "={{ $json.emailBody }}",
+        "options": {}
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PLACEHOLDER",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "id": "b19-if-medium",
+      "name": "IF: hasMedium",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2670, 700],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-medium",
+              "leftValue": "={{ $json.hasMedium }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "b20-code5-skipai",
+      "name": "Code 5: 이메일 (skipAI)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2890, 600],
+      "parameters": {
+        "jsCode": "// Code 5 (skipAI mode): 이메일 생성 without AI analysis\nconst input = items[0].json;\nconst toNotify = input.toNotify || [];\nconst classifiedAnomalies = input.classifiedAnomalies || [];\nconst run_id = input.run_id;\nconst warnings = input.warnings || [];\n\nconst mediumList = toNotify.filter(a =\u003e a.severity === \u0027중간\u0027);\nconst lowList = classifiedAnomalies.filter(a =\u003e a.severity === \u0027낮음\u0027);\n\nlet emailSubject = \u0027\u0027;\nlet emailBody = \u0027\u0027;\n\nif (mediumList.length \u003e 0) {\n  emailSubject = \u0027[생산 이상 알림] 🟡 중간 \u0027 + mediumList.length + \u0027건 (\u0027 + run_id + \u0027)\u0027;\n\n  const parts = [];\n\n  if (warnings.length \u003e 0) {\n    parts.push(\u0027\u003ch3\u003e⚠️ 데이터 경고\u003c/h3\u003e\u0027);\n    parts.push(\u0027\u003cul\u003e\u0027 + warnings.map(w =\u003e \u0027\u003cli\u003e\u0027 + w.message + \u0027\u003c/li\u003e\u0027).join(\u0027\u0027) + \u0027\u003c/ul\u003e\u0027);\n    parts.push(\u0027\u003chr\u003e\u0027);\n  }\n\n  parts.push(\u0027\u003ch3\u003e🟡 중간\u003c/h3\u003e\u0027);\n  for (const a of mediumList) {\n    parts.push(\u0027\u003cdiv style=\"margin-bottom:8px;padding:8px;border-left:4px solid #f39c12;background:#fef9e7;\"\u003e\u0027);\n    parts.push(\u0027\u003cb\u003e\u0027 + a[\u0027라인명\u0027] + \u0027 — \u0027 + a.type + \u0027\u003c/b\u003e (\u0027 + a.pattern_type + \u0027)\u003cbr\u003e\u0027 + a.detail);\n    parts.push(\u0027\u003c/div\u003e\u0027);\n  }\n\n  if (lowList.length \u003e 0) {\n    parts.push(\u0027\u003ch3\u003eℹ️ 참고 (낮음)\u003c/h3\u003e\u0027);\n    parts.push(\u0027\u003cul\u003e\u0027 + lowList.map(a =\u003e \u0027\u003cli\u003e\u0027 + a[\u0027라인명\u0027] + \u0027: \u0027 + a.type + \u0027 — \u0027 + a.detail + \u0027\u003c/li\u003e\u0027).join(\u0027\u0027) + \u0027\u003c/ul\u003e\u0027);\n  }\n\n  parts.push(\u0027\u003chr\u003e\u003cp style=\"color:#888;font-size:12px;\"\u003erun_id: \u0027 + run_id + \u0027 | 생성 시각: \u0027 + new Date().toISOString() + \u0027\u003c/p\u003e\u0027);\n  emailBody = parts.join(\u0027\\n\u0027);\n}\n\nconst anomalyLogRows = classifiedAnomalies.map(a =\u003e ({\n  \u0027날짜\u0027: a[\u0027날짜\u0027], \u0027시간\u0027: a[\u0027시간\u0027], \u0027라인ID\u0027: a[\u0027라인ID\u0027], \u0027라인명\u0027: a[\u0027라인명\u0027],\n  \u0027팀\u0027: a[\u0027팀\u0027], \u0027품목\u0027: a[\u0027품목\u0027], type: a.type, severity: a.severity,\n  detail: a.detail, pattern_type: a.pattern_type, recurrence_count: a.recurrence_count,\n  ai_insight: \u0027\u0027, ai_parsed: false, run_id: a.run_id,\n  idempotency_key: a.idempotency_key, notification_status: a.notification_status\n}));\n\nreturn [{ json: {\n  anomalyLogRows,\n  emailSubject,\n  emailBody,\n  sendEmail: mediumList.length \u003e 0,\n  hasSevere: false,\n  run_id\n} }];"
+      }
+    },
+    {
+      "id": "b21-gmail-medium",
+      "name": "Gmail: 중간 알림",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [3110, 600],
+      "parameters": {
+        "sendTo": "rodion45673@gmail.com",
+        "subject": "={{ $json.emailSubject }}",
+        "emailType": "html",
+        "message": "={{ $json.emailBody }}",
+        "options": {}
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PLACEHOLDER",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "id": "b22-noop",
+      "name": "NoOp: 낮음만",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2890, 800],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code 0: run_id 생성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code 0: run_id 생성": {
+      "main": [
+        [
+          {
+            "node": "Read production_week",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read line_master",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read production_week": {
+      "main": [
+        [
+          {
+            "node": "Merge: 데이터 결합",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read line_master": {
+      "main": [
+        [
+          {
+            "node": "Merge: 데이터 결합",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge: 데이터 결합": {
+      "main": [
+        [
+          {
+            "node": "Code 1: 데이터 검증",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code 1: 데이터 검증": {
+      "main": [
+        [
+          {
+            "node": "Code 2: 이상 탐지",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code 2: 이상 탐지": {
+      "main": [
+        [
+          {
+            "node": "Extract hourly_summary",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read anomaly_log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract hourly_summary": {
+      "main": [
+        [
+          {
+            "node": "Append hourly_summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read anomaly_log": {
+      "main": [
+        [
+          {
+            "node": "Merge: 이상 + 이력 결합",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge: 이상 + 이력 결합": {
+      "main": [
+        [
+          {
+            "node": "Code 3: 패턴 분류",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code 3: 패턴 분류": {
+      "main": [
+        [
+          {
+            "node": "Extract anomaly rows",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF: hasSevere",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract anomaly rows": {
+      "main": [
+        [
+          {
+            "node": "Append anomaly_log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: hasSevere": {
+      "main": [
+        [
+          {
+            "node": "Code 4: 마스킹 + 프롬프트",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF: hasMedium",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code 4: 마스킹 + 프롬프트": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request: Claude API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request: Claude API": {
+      "main": [
+        [
+          {
+            "node": "Merge: API 응답 결합",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge: API 응답 결합": {
+      "main": [
+        [
+          {
+            "node": "Code 5: AI 파싱 + 이메일",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code 5: AI 파싱 + 이메일": {
+      "main": [
+        [
+          {
+            "node": "Gmail: 심각 알림",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: hasMedium": {
+      "main": [
+        [
+          {
+            "node": "Code 5: 이메일 (skipAI)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoOp: 낮음만",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code 5: 이메일 (skipAI)": {
+      "main": [
+        [
+          {
+            "node": "Gmail: 중간 알림",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "Phase 2"
+    },
+    {
+      "name": "모니터"
+    }
+  ]
+}

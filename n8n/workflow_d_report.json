@@ -1,0 +1,405 @@
+{
+  "name": "D: AI Agent 일일 리포트",
+  "nodes": [
+    {
+      "id": "d1-schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 400],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtMinute": 40,
+              "triggerAtHour": 7,
+              "field": "cronExpression",
+              "expression": "40 7 * * 1-5"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d2-read-anomaly-log",
+      "name": "Read anomaly_log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [500, 200],
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "1VAztXgQjDGP6tJBg9ClOCR7Mmhuv95-P0HbIAA3hlTo",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "anomaly_log",
+          "mode": "name"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "d3-read-daily-summary",
+      "name": "Read daily_summary",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [500, 400],
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "1VAztXgQjDGP6tJBg9ClOCR7Mmhuv95-P0HbIAA3hlTo",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "daily_summary",
+          "mode": "name"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "d4-read-production-week",
+      "name": "Read production_week",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [500, 600],
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "1HPfnkwfkK5sDkUZiKDxqGB5jBIOVm1VsPCON6QpFRtM",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "d5-read-line-master",
+      "name": "Read line_master",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [500, 800],
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "1ailXsbVux_5RCDBhXgVmiBLkH1c09_yn-2WliHN2sgc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "d6-merge-data",
+      "name": "Merge All Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [780, 400],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// 4개 입력 소스를 하나의 JSON 객체로 병합\n// input 0: anomaly_log, input 1: daily_summary, input 2: production_week, input 3: line_master\nconst anomalyLog = $input(\"Read anomaly_log\").all().map(i => i.json);\nconst dailySummary = $input(\"Read daily_summary\").all().map(i => i.json);\nconst productionWeek = $input(\"Read production_week\").all().map(i => i.json);\nconst lineMaster = $input(\"Read line_master\").all().map(i => i.json);\n\nreturn [{\n  json: {\n    anomalyLog,\n    dailySummary,\n    productionWeek,\n    lineMaster\n  }\n}];"
+      }
+    },
+    {
+      "id": "d7-code1-prepare",
+      "name": "Code 1: 데이터 준비",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1020, 400],
+      "parameters": {
+        "jsCode": "// 워크플로 D — Code Node 1: 데이터 로드 + 도구 함수 정의 + 마스킹\n// 입력: Google Sheets에서 읽은 anomaly_log, daily_summary, production_week, line_master\n// 출력: Agent에게 보낼 tools 정의 + 마스킹된 데이터 + System Prompt\n\nconst input = items[0].json;\nconst anomalyLog = input.anomalyLog || [];\nconst dailySummary = input.dailySummary || [];\nconst productionWeek = input.productionWeek || [];\nconst lineMaster = input.lineMaster || [];\n\n// --- 날짜 계산 ---\nconst now = new Date();\nconst yesterday = new Date(now);\nyesterday.setDate(yesterday.getDate() - 1);\nconst yesterdayStr = yesterday.toISOString().slice(0, 10);\n\n// --- 마스킹 사전 ---\nconst maskDict = {};\nconst reverseDict = {};\nlineMaster.forEach((lm, i) => {\n  const lineCode = `LINE_${String.fromCharCode(65 + i)}`;\n  const productCode = `PROD_${String(i + 1).padStart(2, '0')}`;\n  const teamCode = `TEAM_${lm['팀'].replace(/[^0-9]/g, '')}`;\n  maskDict[lm['라인명']] = lineCode;\n  maskDict[lm['품목']] = productCode;\n  maskDict[lm['팀']] = teamCode;\n  reverseDict[lineCode] = lm['라인명'];\n  reverseDict[productCode] = lm['품목'];\n  reverseDict[teamCode] = lm['팀'];\n});\n\nfunction maskText(text) {\n  if (typeof text !== 'string') return text;\n  let masked = text;\n  const keys = Object.keys(maskDict).sort((a, b) => b.length - a.length);\n  for (const k of keys) { masked = masked.split(k).join(maskDict[k]); }\n  return masked;\n}\n\nfunction maskObj(obj) {\n  const result = {};\n  for (const [k, v] of Object.entries(obj)) {\n    result[k] = typeof v === 'string' ? maskText(v) : v;\n  }\n  return result;\n}\n\n// --- 마스킹된 데이터 준비 ---\nconst maskedAnomalyLog = anomalyLog.map(maskObj);\nconst maskedDailySummary = dailySummary.map(maskObj);\nconst maskedProductionWeek = productionWeek.map(maskObj);\nconst maskedLineMaster = lineMaster.map((lm, i) => ({\n  라인ID: lm['라인ID'],\n  라인명: maskDict[lm['라인명']] || lm['라인명'],\n  팀: maskDict[lm['팀']] || lm['팀'],\n  품목: maskDict[lm['품목']] || lm['품목'],\n  시간당목표: lm['시간당목표'],\n  정상불량률: lm['정상불량률']\n}));\n\n// --- Claude API Tool 정의 ---\nconst tools = [\n  {\n    name: \"get_anomaly_log\",\n    description: \"이상 이력을 조회합니다. 날짜, 심각도, 라인ID로 필터링할 수 있습니다.\",\n    input_schema: {\n      type: \"object\",\n      properties: {\n        date: { type: \"string\", description: \"조회할 날짜 (YYYY-MM-DD). 미지정 시 어제\" },\n        severity: { type: \"string\", description: \"심각도 필터 (심각/중간/낮음). 미지정 시 전체\" },\n        line_id: { type: \"string\", description: \"라인ID 필터 (예: L03). 미지정 시 전체\" }\n      },\n      required: []\n    }\n  },\n  {\n    name: \"get_daily_summary\",\n    description: \"일별 요약을 조회합니다. 날짜, 팀으로 필터링할 수 있습니다.\",\n    input_schema: {\n      type: \"object\",\n      properties: {\n        date: { type: \"string\", description: \"조회할 날짜 (YYYY-MM-DD). 미지정 시 어제\" },\n        team: { type: \"string\", description: \"팀 필터 (예: TEAM_1). 미지정 시 전체\" }\n      },\n      required: []\n    }\n  },\n  {\n    name: \"get_line_master\",\n    description: \"라인/팀 구성 정보를 조회합니다.\",\n    input_schema: {\n      type: \"object\",\n      properties: {},\n      required: []\n    }\n  },\n  {\n    name: \"get_hourly_detail\",\n    description: \"시간별 생산 상세 데이터를 조회합니다. 날짜, 라인ID로 필터링할 수 있습니다.\",\n    input_schema: {\n      type: \"object\",\n      properties: {\n        date: { type: \"string\", description: \"조회할 날짜 (YYYY-MM-DD). 미지정 시 어제\" },\n        line_id: { type: \"string\", description: \"라인ID 필터 (예: L03). 미지정 시 전체\" }\n      },\n      required: []\n    }\n  }\n];\n\n// --- System Prompt ---\nconst systemPrompt = `당신은 제조 현장 일일 리포트를 작성하는 AI Agent입니다.\n제공된 도구를 사용해 어제(${yesterdayStr})의 생산 데이터를 조회하고 분석하세요.\n\n도구 사용 규칙:\n- 먼저 get_anomaly_log로 어제 이상 건수를 파악하세요.\n- 심각도와 건수에 따라 추가 조회 깊이를 결정하세요.\n- 불필요한 도구 호출은 하지 마세요.\n- 모든 라인명과 품목명은 제공된 코드(LINE_A, PROD_01 등)로 표기하세요.\n\n리포트 깊이 기준:\n- 심각 0건 + 중간 2건 이하 → 간단 (도구 1~2회)\n- 심각 1~2건 또는 중간 3건+ → 보통 (도구 3~4회)\n- 심각 3건+ 또는 악화 추세 → 상세 (도구 5~6회, 경영진 CC)\n\n반드시 아래 JSON 형식으로 응답하세요:\n{\n  \"report_level\": \"간단/보통/상세\",\n  \"cc_management\": true/false,\n  \"summary\": \"한 줄 요약\",\n  \"sections\": {\n    \"핵심_경고\": \"심각/악화 건 상세 (없으면 '없음')\",\n    \"추세_분석\": \"최근 7일 추이 (보통/상세만)\",\n    \"팀별_현황\": \"팀별 달성률/불량률 요약\",\n    \"기타_이상\": \"중간/낮음 건 요약\",\n    \"권장_조치\": \"조치 사항 정리\"\n  },\n  \"recommendations\": [\"권장 조치 1\", \"권장 조치 2\"]\n}`;\n\nreturn [{ json: {\n  tools,\n  systemPrompt,\n  yesterdayStr,\n  maskedAnomalyLog,\n  maskedDailySummary,\n  maskedProductionWeek,\n  maskedLineMaster,\n  reverseDict\n} }];"
+      }
+    },
+    {
+      "id": "d8-code2-agent-loop",
+      "name": "Code 2: Agent 루프",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1260, 400],
+      "parameters": {
+        "jsCode": "// 워크플로 D — Code Node 2: AI Agent 루프\n// 입력: d_code1에서 전달된 tools, systemPrompt, 마스킹된 데이터\n// 출력: Agent 최종 리포트 또는 폴백 리포트\n\nconst input = items[0].json;\nconst tools = input.tools;\nconst systemPrompt = input.systemPrompt;\nconst yesterdayStr = input.yesterdayStr;\nconst maskedAnomalyLog = input.maskedAnomalyLog;\nconst maskedDailySummary = input.maskedDailySummary;\nconst maskedProductionWeek = input.maskedProductionWeek;\nconst maskedLineMaster = input.maskedLineMaster;\nconst reverseDict = input.reverseDict;\n\nconst MAX_TOOL_CALLS = 8;\nconst API_TIMEOUT = 60000;\n\n// --- API 키를 워크플로 Static Data에서 가져오기 ---\n// n8n UI에서 Settings > Static Data > global에 {\"anthropic_api_key\": \"sk-ant-...\"} 설정 필요\nconst staticData = $getWorkflowStaticData('global');\nconst apiKey = staticData.anthropic_api_key || '';\n\nif (!apiKey) {\n  return [{ json: {\n    agentSuccess: false,\n    finalReport: null,\n    toolCallCount: 0,\n    reverseDict,\n    yesterdayStr,\n    error: 'anthropic_api_key가 워크플로 Static Data에 설정되지 않았습니다. Settings > Static Data에 {\"anthropic_api_key\": \"sk-ant-...\"}를 추가하세요.'\n  } }];\n}\n\n// --- 도구 실행 함수 ---\nfunction executeTool(toolName, toolInput) {\n  try {\n    if (toolName === 'get_anomaly_log') {\n      let results = maskedAnomalyLog;\n      const date = toolInput.date || yesterdayStr;\n      results = results.filter(r => r['날짜'] === date);\n      if (toolInput.severity) results = results.filter(r => r.severity === toolInput.severity);\n      if (toolInput.line_id) results = results.filter(r => r['라인ID'] === toolInput.line_id);\n      return JSON.stringify({ count: results.length, data: results.slice(0, 50) });\n    }\n\n    if (toolName === 'get_daily_summary') {\n      let results = maskedDailySummary;\n      const date = toolInput.date || yesterdayStr;\n      results = results.filter(r => r['날짜'] === date);\n      if (toolInput.team) results = results.filter(r => r['팀'] === toolInput.team);\n      return JSON.stringify({ count: results.length, data: results });\n    }\n\n    if (toolName === 'get_line_master') {\n      return JSON.stringify({ count: maskedLineMaster.length, data: maskedLineMaster });\n    }\n\n    if (toolName === 'get_hourly_detail') {\n      let results = maskedProductionWeek;\n      const date = toolInput.date || yesterdayStr;\n      results = results.filter(r => r['날짜'] === date);\n      if (toolInput.line_id) results = results.filter(r => r['라인ID'] === toolInput.line_id);\n      return JSON.stringify({ count: results.length, data: results.slice(0, 120) });\n    }\n\n    return JSON.stringify({ error: `알 수 없는 도구: ${toolName}` });\n  } catch (e) {\n    return JSON.stringify({ error: `도구 실행 실패: ${e.message}` });\n  }\n}\n\n// --- Agent 루프 ---\nconst messages = [{ role: \"user\", content: `어제(${yesterdayStr}) 일일 리포트를 작성해주세요.` }];\nlet toolCallCount = 0;\nlet agentSuccess = false;\nlet finalReport = null;\n\ntry {\n  for (let iteration = 0; iteration < MAX_TOOL_CALLS + 2; iteration++) {\n    const requestBody = {\n      model: \"claude-sonnet-4-20250514\",\n      max_tokens: 3000,\n      system: systemPrompt,\n      tools: tools,\n      messages: messages\n    };\n\n    const response = await this.helpers.httpRequest({\n      method: 'POST',\n      url: 'https://api.anthropic.com/v1/messages',\n      headers: {\n        'x-api-key': apiKey,\n        'anthropic-version': '2023-06-01',\n        'content-type': 'application/json'\n      },\n      body: requestBody,\n      timeout: API_TIMEOUT,\n      json: true\n    });\n\n    if (response.stop_reason === 'tool_use') {\n      const assistantContent = response.content;\n      messages.push({ role: \"assistant\", content: assistantContent });\n\n      const toolResults = [];\n      for (const block of assistantContent) {\n        if (block.type === 'tool_use') {\n          toolCallCount++;\n          if (toolCallCount > MAX_TOOL_CALLS) {\n            toolResults.push({\n              type: \"tool_result\",\n              tool_use_id: block.id,\n              content: JSON.stringify({ error: \"도구 호출 횟수 초과 (최대 8회). 현재까지 데이터로 리포트를 작성하세요.\" })\n            });\n          } else {\n            const result = executeTool(block.name, block.input);\n            toolResults.push({\n              type: \"tool_result\",\n              tool_use_id: block.id,\n              content: result\n            });\n          }\n        }\n      }\n\n      messages.push({ role: \"user\", content: toolResults });\n\n      if (toolCallCount > MAX_TOOL_CALLS) continue;\n    } else if (response.stop_reason === 'end_turn') {\n      const textBlock = response.content.find(b => b.type === 'text');\n      if (textBlock) {\n        finalReport = textBlock.text;\n        agentSuccess = true;\n      }\n      break;\n    } else {\n      break;\n    }\n  }\n} catch (e) {\n  agentSuccess = false;\n  finalReport = null;\n}\n\n// --- 결과 전달 ---\nreturn [{ json: {\n  agentSuccess,\n  finalReport,\n  toolCallCount,\n  reverseDict,\n  yesterdayStr\n} }];"
+      }
+    },
+    {
+      "id": "d9-if-agent-success",
+      "name": "IF Agent Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1500, 400],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "agent-success-condition",
+              "leftValue": "={{ $json.agentSuccess }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "d10-code3-report",
+      "name": "Code 3: 리포트 생성",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1740, 300],
+      "parameters": {
+        "jsCode": "// 워크플로 D — Code Node 3: 리포트 파싱 + 언마스킹 + 이메일 생성\n// 입력: Agent 루프 결과 (성공 시 JSON 리포트)\n// 출력: 이메일 제목 + 본문 + CC 여부\n\nconst input = items[0].json;\nconst agentSuccess = input.agentSuccess;\nconst finalReport = input.finalReport;\nconst reverseDict = input.reverseDict || {};\nconst yesterdayStr = input.yesterdayStr;\nconst toolCallCount = input.toolCallCount || 0;\n\nfunction unmask(text) {\n  if (typeof text !== 'string') return text;\n  let result = text;\n  const keys = Object.keys(reverseDict).sort((a, b) => b.length - a.length);\n  for (const code of keys) { result = result.split(code).join(reverseDict[code]); }\n  return result;\n}\n\nlet emailSubject = '';\nlet emailBody = '';\nlet ccManagement = false;\n\nif (agentSuccess && finalReport) {\n  // --- JSON 파싱 시도 ---\n  let report = null;\n  try {\n    const cleaned = finalReport.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n    report = JSON.parse(cleaned);\n  } catch (e) {\n    report = null;\n  }\n\n  if (report && report.summary) {\n    // 파싱 성공: 구조화된 리포트\n    ccManagement = report.cc_management || false;\n    const level = report.report_level || '보통';\n    const levelEmoji = level === '상세' ? '🔴' : level === '보통' ? '🟡' : '🟢';\n\n    emailSubject = `[일일 리포트] ${levelEmoji} ${unmask(report.summary)} (${yesterdayStr})`;\n\n    const parts = [];\n    parts.push(`<h2>${levelEmoji} 일일 생산 리포트 — ${yesterdayStr}</h2>`);\n    parts.push(`<p><b>리포트 수준:</b> ${level} | <b>도구 호출:</b> ${toolCallCount}회</p>`);\n    parts.push(`<p><b>요약:</b> ${unmask(report.summary)}</p>`);\n    parts.push('<hr>');\n\n    if (report.sections) {\n      const sectionNames = {\n        '핵심_경고': '🚨 핵심 경고',\n        '추세_분석': '📈 추세 분석',\n        '팀별_현황': '👥 팀별 현황',\n        '기타_이상': 'ℹ️ 기타 이상',\n        '권장_조치': '✅ 권장 조치'\n      };\n      for (const [key, title] of Object.entries(sectionNames)) {\n        const content = report.sections[key];\n        if (content && content !== '없음') {\n          parts.push(`<h3>${title}</h3>`);\n          parts.push(`<p>${unmask(content)}</p>`);\n        }\n      }\n    }\n\n    if (report.recommendations && report.recommendations.length > 0) {\n      parts.push('<h3>📋 권장 조치 목록</h3>');\n      parts.push('<ol>' + report.recommendations.map(r => `<li>${unmask(r)}</li>`).join('') + '</ol>');\n    }\n\n    parts.push(`<hr><p style=\"color:#888;font-size:12px;\">AI Agent 생성 | ${new Date().toISOString()}</p>`);\n    emailBody = parts.join('\\n');\n  } else {\n    // 파싱 실패: 텍스트 그대로 사용\n    emailSubject = `[일일 리포트] ${yesterdayStr} (텍스트 형식)`;\n    emailBody = `<h2>일일 생산 리포트 — ${yesterdayStr}</h2><p><i>AI 응답을 JSON으로 파싱하지 못하여 원문을 포함합니다.</i></p><hr><pre>${unmask(finalReport)}</pre><hr><p style=\"color:#888;font-size:12px;\">AI Agent 생성 (파싱 실패) | ${new Date().toISOString()}</p>`;\n  }\n} else {\n  // 폴백 (이 노드가 FALSE 브랜치에서도 호출될 수 있음)\n  emailSubject = `[일일 리포트] ⚠️ 자동 생성 실패 — 폴백 리포트 (${yesterdayStr})`;\n  emailBody = `<h2>⚠️ 일일 생산 리포트 — ${yesterdayStr}</h2><p><b>AI Agent 리포트 생성에 실패하여 폴백 리포트를 발송합니다.</b></p><p>상세 분석은 Power BI 대시보드 또는 Google Sheets anomaly_log를 직접 확인해주세요.</p><hr><h3>확인 필요 사항</h3><ul><li>production_results 시트의 anomaly_log 탭에서 어제 이상 건 확인</li><li>hourly_summary 탭에서 팀별 달성률 확인</li><li>Claude API 키 및 네트워크 상태 확인</li></ul><hr><p style=\"color:#888;font-size:12px;\">폴백 리포트 | ${new Date().toISOString()}</p>`;\n}\n\nreturn [{ json: { emailSubject, emailBody, ccManagement, sendEmail: true } }];"
+      }
+    },
+    {
+      "id": "d11-code3-fallback",
+      "name": "Code 3: 폴백 리포트",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1740, 550],
+      "parameters": {
+        "jsCode": "// 워크플로 D — Code Node 3 (폴백): 폴백 리포트 생성\n// 입력: Agent 루프 실패 결과\n// 출력: 폴백 이메일 제목 + 본문\n\nconst input = items[0].json;\nconst reverseDict = input.reverseDict || {};\nconst yesterdayStr = input.yesterdayStr;\n\nfunction unmask(text) {\n  if (typeof text !== 'string') return text;\n  let result = text;\n  const keys = Object.keys(reverseDict).sort((a, b) => b.length - a.length);\n  for (const code of keys) { result = result.split(code).join(reverseDict[code]); }\n  return result;\n}\n\nconst emailSubject = `[일일 리포트] ⚠️ 자동 생성 실패 — 폴백 리포트 (${yesterdayStr})`;\nconst emailBody = `<h2>⚠️ 일일 생산 리포트 — ${yesterdayStr}</h2>\n<p><b>AI Agent 리포트 생성에 실패하여 폴백 리포트를 발송합니다.</b></p>\n<p>상세 분석은 Power BI 대시보드 또는 Google Sheets anomaly_log를 직접 확인해주세요.</p>\n<hr>\n<h3>확인 필요 사항</h3>\n<ul>\n  <li>production_results 시트의 anomaly_log 탭에서 어제 이상 건 확인</li>\n  <li>hourly_summary 탭에서 팀별 달성률 확인</li>\n  <li>Claude API 키 및 네트워크 상태 확인</li>\n</ul>\n<hr>\n<p style=\"color:#888;font-size:12px;\">폴백 리포트 | ${new Date().toISOString()}</p>`;\n\nreturn [{ json: { emailSubject, emailBody, ccManagement: false, sendEmail: true } }];"
+      }
+    },
+    {
+      "id": "d12-gmail-report",
+      "name": "Gmail: 리포트 발송",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1980, 300],
+      "parameters": {
+        "sendTo": "={{ $json.ccManagement ? 'RECIPIENT_EMAIL,MANAGEMENT_CC_EMAIL' : 'RECIPIENT_EMAIL' }}",
+        "subject": "={{ $json.emailSubject }}",
+        "emailType": "html",
+        "message": "={{ $json.emailBody }}"
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PLACEHOLDER",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "id": "d13-gmail-fallback",
+      "name": "Gmail: 폴백 발송",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1980, 550],
+      "parameters": {
+        "sendTo": "RECIPIENT_EMAIL",
+        "subject": "={{ $json.emailSubject }}",
+        "emailType": "html",
+        "message": "={{ $json.emailBody }}"
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PLACEHOLDER",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read anomaly_log",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read daily_summary",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read production_week",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read line_master",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read anomaly_log": {
+      "main": [
+        [
+          {
+            "node": "Merge All Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read daily_summary": {
+      "main": [
+        [
+          {
+            "node": "Merge All Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read production_week": {
+      "main": [
+        [
+          {
+            "node": "Merge All Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read line_master": {
+      "main": [
+        [
+          {
+            "node": "Merge All Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All Data": {
+      "main": [
+        [
+          {
+            "node": "Code 1: 데이터 준비",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code 1: 데이터 준비": {
+      "main": [
+        [
+          {
+            "node": "Code 2: Agent 루프",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code 2: Agent 루프": {
+      "main": [
+        [
+          {
+            "node": "IF Agent Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Agent Success": {
+      "main": [
+        [
+          {
+            "node": "Code 3: 리포트 생성",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code 3: 폴백 리포트",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code 3: 리포트 생성": {
+      "main": [
+        [
+          {
+            "node": "Gmail: 리포트 발송",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code 3: 폴백 리포트": {
+      "main": [
+        [
+          {
+            "node": "Gmail: 폴백 발송",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "Phase 2"
+    },
+    {
+      "name": "AI Agent"
+    },
+    {
+      "name": "일일 리포트"
+    }
+  ]
+}

@@ -1,0 +1,123 @@
+{
+  "version": "1.0",
+  "description": "이상 탐지 룰 설정 — 8가지 룰 × 3단계 심각도",
+  "rules": [
+    {
+      "id": "rule_01",
+      "name": "생산량 급감",
+      "type": "drop_rate",
+      "target": "시간당생산",
+      "compare_with": "previous_hour",
+      "levels": [
+        { "severity": "심각", "min": 40, "max": null },
+        { "severity": "중간", "min": 20, "max": 40 },
+        { "severity": "낮음", "min": 5,  "max": 20 }
+      ],
+      "message": "{line_name}: 생산량 {value}% 감소 (이전 {prev} → 현재 {curr})"
+    },
+    {
+      "id": "rule_02",
+      "name": "가동률 저하",
+      "type": "below_threshold",
+      "target": "시간당가동률(%)",
+      "levels": [
+        { "severity": "심각", "min": null, "max": 30 },
+        { "severity": "중간", "min": 30,   "max": 50 },
+        { "severity": "낮음", "min": 50,   "max": 70 }
+      ],
+      "message": "{line_name}: 가동률 {value}% (기준 미달)"
+    },
+    {
+      "id": "rule_03",
+      "name": "불량률 급등",
+      "type": "exceeds_baseline",
+      "target": "시간당불량률(%)",
+      "baseline_field": "정상불량률",
+      "levels": [
+        { "severity": "심각", "min": 5,   "max": null },
+        { "severity": "중간", "min": 3,   "max": 5 },
+        { "severity": "낮음", "min": 2,   "max": 3 }
+      ],
+      "message": "{line_name}: 불량률 {value}% (정상의 {ratio}배, 기준 {baseline}%)"
+    },
+    {
+      "id": "rule_04",
+      "name": "달성률 지연",
+      "type": "below_threshold",
+      "target": "달성갭(%p)",
+      "levels": [
+        { "severity": "심각", "min": null, "max": -30 },
+        { "severity": "중간", "min": -30,  "max": -15 },
+        { "severity": "낮음", "min": -15,  "max": -5 }
+      ],
+      "message": "{line_name}: 달성갭 {value}%p (예상 대비 지연)"
+    },
+    {
+      "id": "rule_05",
+      "name": "생산 정체",
+      "type": "consecutive_zero",
+      "target": "시간당생산",
+      "levels": [
+        { "severity": "심각", "min": 3, "max": null },
+        { "severity": "중간", "min": 2, "max": 3 },
+        { "severity": "낮음", "min": 1, "max": 2 }
+      ],
+      "message": "{line_name}: 생산 {value}시간 연속 0 (설비 정지 의심)"
+    },
+    {
+      "id": "rule_06",
+      "name": "폐기 발생",
+      "type": "above_threshold",
+      "target": "시간당폐기",
+      "rate_base": "시간당생산",
+      "levels": [
+        { "severity": "심각", "min": 3,   "max": null },
+        { "severity": "중간", "min": 1,   "max": 3 },
+        { "severity": "낮음", "min": 0.1, "max": 1 }
+      ],
+      "message": "{line_name}: 폐기율 {value}% ({scrap}개/{production}개)"
+    },
+    {
+      "id": "rule_07",
+      "name": "복합 이상",
+      "type": "compound",
+      "operator": "AND",
+      "conditions": [
+        {
+          "target": "시간당생산",
+          "compare_type": "drop_rate",
+          "compare_with": "previous_hour",
+          "levels": [
+            { "severity": "심각", "min": 30, "max": null },
+            { "severity": "중간", "min": 15, "max": 30 },
+            { "severity": "낮음", "min": 5,  "max": 15 }
+          ]
+        },
+        {
+          "target": "시간당불량률(%)",
+          "compare_type": "exceeds_baseline",
+          "baseline_field": "정상불량률",
+          "levels": [
+            { "severity": "심각", "min": 3,   "max": null },
+            { "severity": "중간", "min": 2,   "max": 3 },
+            { "severity": "낮음", "min": 1.5, "max": 2 }
+          ]
+        }
+      ],
+      "message": "{line_name}: 복합 이상 — 생산 {drop}% 감소 + 불량 {ratio}배 증가"
+    },
+    {
+      "id": "rule_08",
+      "name": "가동률 급락",
+      "type": "drop_points",
+      "target": "시간당가동률(%)",
+      "compare_with": "previous_hour",
+      "levels": [
+        { "severity": "심각", "min": 50, "max": null },
+        { "severity": "중간", "min": 30, "max": 50 },
+        { "severity": "낮음", "min": 15, "max": 30 }
+      ],
+      "message": "{line_name}: 가동률 {value}%p 급락 (이전 {prev}% → 현재 {curr}%)"
+    }
+  ]
+}
