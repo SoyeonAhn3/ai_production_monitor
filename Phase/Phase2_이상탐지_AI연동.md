@@ -1,8 +1,8 @@
-# Phase 2 — 이상 탐지 + AI 연동 `🔲 미시작`
+# Phase 2 — 이상 탐지 + AI 연동 `✅ 완료`
 
 > Config-driven 이상 탐지 엔진을 구현하고, AI 해석/패턴 분류를 연동하여 핵심 분석 파이프라인을 완성한다. 일일 리포트(워크플로 D)에는 AI Agent 패턴을 적용하여 자율적 분석 리포트를 생성한다.
 
-**상태**: 🔲 미시작
+**상태**: ✅ 완료
 **선행 조건**: Phase 1 완료 (n8n + Google Sheets + 워크플로 A/B 기본 구조)
 
 ---
@@ -24,22 +24,22 @@ AI가 도구(Tool Use)를 활용해 자율적으로 데이터를 조회하고
 
 | # | 항목 | 상태 | 비고 |
 |---|---|---|---|
-| 1 | Claude Code Skill `/rules-gen` 개발 | 🔲 미시작 | rules.json 생성 + 형식 검증 |
-| 2 | Config-driven 이상 탐지 (rules.json + engine.js) | 🔲 미시작 | 8가지 룰 × 3레벨 심각도 |
-| 3 | 데이터 검증 로직 | 🔲 미시작 | null/빈칸, 라인 누락, 컬럼 검증 |
-| 4 | JavaScript 패턴 1차 분류 | 🔲 미시작 | 신규/반복/악화 (로컬, AI 없음) |
-| 5 | 마스킹 처리 로직 | 🔲 미시작 | mask_dict 동적 생성, 언마스킹 |
-| 6 | Claude API 해석 + 패턴 2차 검증 | 🔲 미시작 | 심각/악화 건만 호출 |
-| 7 | 이메일 알림 (심각도별 분기) | 🔲 미시작 | 심각: AI+이메일, 중간: 이메일만, 낮음: 로그만 |
-| 8 | 중복 알림 방지 (Static Data) | 🔲 미시작 | 심각 60분(다음 사이클) 반복, 중간 1회 |
-| 9 | 에러 핸들링 (7개 에러 지점) | 🔲 미시작 | 재시도/폴백/error_log |
-| 10 | Google Sheets 자동 저장 | 🔲 미시작 | hourly_summary, anomaly_log (run_id, idempotency_key, notification_status 포함) |
-| 11 | 워크플로 B 업데이트 JSON 재생성 | 🔲 미시작 | 전체 로직 반영 |
-| 12 | AI Agent 도구 함수 구현 (워크플로 D) | 🔲 미시작 | get_anomaly_log, get_daily_summary 등 4개 |
-| 13 | Claude Code Skill `/agent-prompt` 개발 | 🔲 미시작 | System Prompt 생성/버전 관리/튜닝 |
-| 14 | AI Agent System Prompt + 루프 구현 | 🔲 미시작 | Claude Tool Use 기반, 최대 8회 |
-| 15 | AI Agent 안전장치 (폴백, 호출 제한) | 🔲 미시작 | 실패 시 고정 포맷 리포트 대체 |
-| 16 | 워크플로 D JSON 생성 | 🔲 미시작 | AI Agent 로직 포함 |
+| 1 | Claude Code Skill `/rules-gen` 개발 | ⏭️ 생략 | rules.json 직접 작성으로 대체 (별도 스킬 불필요) |
+| 2 | Config-driven 이상 탐지 (rules.json + engine.js) | ✅ 완료 | 8가지 룰 × 3레벨 심각도, config/rules.json + src/detection/engine.js |
+| 3 | 데이터 검증 로직 | ✅ 완료 | src/detection/validator.js + src/n8n_nodes/code1_validate.js |
+| 4 | JavaScript 패턴 1차 분류 | ✅ 완료 | src/detection/classifier.js + src/n8n_nodes/code3_classify.js |
+| 5 | 마스킹 처리 로직 | ✅ 완료 | src/detection/masker.js + src/n8n_nodes/code4_mask_prompt.js |
+| 6 | Claude API 해석 + 패턴 2차 검증 | ✅ 완료 | code4에서 프롬프트 생성 → code5에서 응답 파싱 + 언마스킹 |
+| 7 | 이메일 알림 (심각도별 분기) | ✅ 완료 | code5_parse_email.js에서 HTML 이메일 본문 생성 |
+| 8 | 중복 알림 방지 (Static Data) | ✅ 완료 | code3_classify.js에서 $getWorkflowStaticData 활용 |
+| 9 | 에러 핸들링 (7개 에러 지점) | ✅ 완료 | 워크플로 B/D JSON에 재시도/폴백 로직 반영 |
+| 10 | Google Sheets 자동 저장 | ✅ 완료 | 워크플로 B JSON에 hourly_summary, anomaly_log 저장 노드 포함 |
+| 11 | 워크플로 B 업데이트 JSON 재생성 | ✅ 완료 | n8n/workflow_b_monitor.json |
+| 12 | AI Agent 도구 함수 구현 (워크플로 D) | ✅ 완료 | src/n8n_nodes/d_code1_prepare.js에 4개 도구 정의 |
+| 13 | Claude Code Skill `/agent-prompt` 개발 | ⏭️ 생략 | config/agent_prompt.md 직접 작성으로 대체 (별도 스킬 불필요) |
+| 14 | AI Agent System Prompt + 루프 구현 | ✅ 완료 | config/agent_prompt.md + src/n8n_nodes/d_code2_agent_loop.js (최대 8회) |
+| 15 | AI Agent 안전장치 (폴백, 호출 제한) | ✅ 완료 | MAX_TOOL_CALLS=8, API_TIMEOUT=60s, 폴백 리포트 |
+| 16 | 워크플로 D JSON 생성 | ✅ 완료 | n8n/workflow_d_report.json |
 
 ---
 
@@ -511,3 +511,4 @@ n8n Code 노드 안에서 직접 코딩하면 디버깅이 불편하다 (에러 
 | 2026-05-02 | OneDrive Excel → Google Sheets 전환: 모든 Excel 참조를 Google Sheets로 변경 |
 | 2026-05-02 | 명세서 v3.0 반영: anomaly_log에 run_id/idempotency_key/notification_status 추가, error_log에 run_id 추가 |
 | 2026-05-02 | 워크플로 D 실행 시각 07:40으로 명시, 심각 재알림 60분(다음 사이클)으로 변경 |
+| 2026-05-04 | Phase 2 전체 완료 표기: 16개 항목 중 14개 완료, 2개 생략(/rules-gen, /agent-prompt 스킬 → 산출물 직접 작성으로 대체) |

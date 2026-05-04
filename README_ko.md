@@ -220,8 +220,8 @@ ai_production_monitor/
 
 | Phase | 상태 | 산출물 |
 |---|---|---|
-| Phase 1 — 환경 구축 + 데이터 | 🔧 진행 중 | n8n 셀프호스팅, Google Sheets 4개, 데이터 스크립트, 워크플로 A 시뮬레이터 테스트 완료 |
-| Phase 2 — 이상 탐지 + AI 연동 | 📋 예정 | rules.json + engine.js, 패턴 분류, Claude API, 이메일 알림, 워크플로 B/D |
+| Phase 1 — 환경 구축 + 데이터 | ✅ 완료 | n8n 셀프호스팅, Google Sheets 4개, 데이터 스크립트, 워크플로 A 시뮬레이터 테스트 완료 |
+| Phase 2 — 이상 탐지 + AI 연동 | ✅ 완료 | rules.json + engine.js, validator, classifier, masker, Claude API 연동, 이메일 알림, 워크플로 B/D, AI Agent 일일 리포트, 단위 테스트 |
 | Phase 3 — Power BI 대시보드 | 📋 예정 | 3페이지 대시보드 + AI 시각화 (Key Influencers, Decomposition Tree, Smart Narrative) |
 | Phase 4 — 통합 테스트 + 완성 | 📋 예정 | 10시간 시나리오 테스트, 주간 백업 (워크플로 C), 포트폴리오 문서화 |
 
@@ -247,7 +247,6 @@ ai_production_monitor/
 
 ## 향후 계획
 
-- **Phase 2**: Config-driven 이상 탐지 엔진, 하이브리드 패턴 분류 (JS + Claude API), AI Agent 일일 리포트, 심각도별 이메일 알림
 - **Phase 3**: Power BI 3페이지 대시보드 + AI 시각화, Gateway를 통한 하루 8회 자동 새로고침
 - **Phase 4**: 10시간 시나리오 엔드투엔드 테스트, 주간 백업 자동화, 포트폴리오 문서화
 - **데이터 소스 전환**: 엔터프라이즈 배포를 위한 OneDrive Excel 전환 가이드 포함 (명세서 16장)

@@ -1,8 +1,8 @@
-# Phase 1 — 환경 구축 + 데이터 `🚧 진행 중`
+# Phase 1 — 환경 구축 + 데이터 `✅ 완료`
 
 > n8n 셀프호스팅(npm) 환경을 구축하고, Google Sheets 데이터 구조를 세팅하며, 테스트용 시뮬레이터 워크플로를 준비한다.
 
-**상태**: 🚧 진행 중
+**상태**: ✅ 완료
 **선행 조건**: 없음 (첫 번째 Phase)
 
 ---
@@ -30,9 +30,9 @@ Claude Code Skill `/n8n-gen`을 개발하여 n8n 워크플로 JSON 템플릿을 
 | 8 | 워크플로 A JSON 생성 | ✅ 완료 | n8n/workflow_a_simulator.json (12노드, Sheet ID 반영) |
 | 9 | n8n Google Sheets OAuth2 credential 설정 | ✅ 완료 | OAuth2 Client ID + Secret 등록, 계정 연결 |
 | 10 | 워크플로 A Import + credential 연결 + 테스트 | ✅ 완료 | 시뮬레이터 5회 실행 성공 (08:00~12:00) |
-| 11 | 워크플로 B 기본 구조 JSON 생성 + Import | 🔲 미시작 | Schedule 60분 + Google Sheets 읽기 뼈대 |
+| 11 | 워크플로 B 기본 구조 JSON 생성 + Import | ✅ 완료 | Phase 2에서 전체 로직 포함하여 완성 |
 
-> **현재 상태**: Google Sheets 연결 완료. 워크플로 B는 Phase 2 이상 탐지 로직과 함께 개발 예정.
+> **현재 상태**: 전 항목 완료. 워크플로 B는 Phase 2에서 이상 탐지 로직과 함��� 완성됨.
 
 ---
 

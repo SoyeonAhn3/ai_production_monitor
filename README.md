@@ -220,8 +220,8 @@ ai_production_monitor/
 
 | Phase | Status | Deliverable |
 |---|---|---|
-| Phase 1 — Environment + Data | 🔧 In Progress | n8n self-hosted, Google Sheets 4 sheets, data scripts, Workflow A simulator tested |
-| Phase 2 — Anomaly Detection + AI | 📋 Planned | rules.json + engine.js, pattern classification, Claude API, email alerts, Workflow B/D |
+| Phase 1 — Environment + Data | ✅ Done | n8n self-hosted, Google Sheets 4 sheets, data scripts, Workflow A simulator tested |
+| Phase 2 — Anomaly Detection + AI | ✅ Done | rules.json + engine.js, validator, classifier, masker, Claude API integration, email alerts, Workflow B/D, AI Agent daily report, unit tests |
 | Phase 3 — Power BI Dashboard | 📋 Planned | 3-page dashboard + AI visualizations (Key Influencers, Decomposition Tree, Smart Narrative) |
 | Phase 4 — Integration Test + Completion | 📋 Planned | 10-hour scenario test, weekly backup (Workflow C), portfolio documentation |
 
@@ -247,7 +247,6 @@ ai_production_monitor/
 
 ## Future Plans
 
-- **Phase 2**: Config-driven anomaly detection engine, hybrid pattern classification (JS + Claude API), AI Agent daily report, email alerts with severity routing
 - **Phase 3**: Power BI 3-page dashboard with AI visualizations, auto-refresh 8x/day via Gateway
 - **Phase 4**: End-to-end 10-hour scenario test, weekly backup automation, portfolio documentation
 - **Data source migration**: OneDrive Excel conversion guide included in spec (Section 16) for enterprise deployment
