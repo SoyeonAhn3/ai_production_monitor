@@ -8,7 +8,7 @@ required_environment:
 depends_on:
   - dev-log
 produces:
-  - Phase/PhaseN_[이름].md (신규 생성 또는 갱신)
+  - Phase/PhaseN_[EnglishName].md (신규 생성 또는 갱신)
   - logs/dev_YYYYMMDD.jsonl (변경 이력 기록)
 ---
 
@@ -31,7 +31,7 @@ produces:
 아래 파일들을 Read / Glob 도구로 확인한다:
 
 ```
-Phase/PhaseN_*.md       — 기존 문서 확인
+Phase/PhaseN_*.md       — 기존 문서 확인 (파일명은 영어로 작성)
 src/modules/            — 구현된 Python 모듈 확인
 .claude/skills/         — 등록된 스킬 확인
 README.md               — 전체 Phase 계획 확인
@@ -56,27 +56,29 @@ README.md               — 전체 Phase 계획 확인
 ```
 Read("references/phase-template.md")
 ```
-→ 표준 구조 로드 후 Write 도구로 `Phase/PhaseN_[이름].md` 생성
+→ 표준 구조 로드 후 Write 도구로 `Phase/PhaseN_[EnglishName].md` 생성
 
 ### 2-B. 기존 문서 갱신
 
 Edit 도구로 변경된 부분만 수정한다. 전체 재작성 금지.
+**중요: 영어 섹션과 한국어 섹션을 반드시 동시에 갱신하여 내용을 동기화한다.**
 
 **자주 갱신하는 패턴:**
 
 ```
-# 상태 변경
+# 상태 변경 (영어/한국어 섹션 모두)
+"🔲 Not Started" → "🚧 In Progress" → "✅ Completed"
 "🔲 미시작" → "🚧 진행 중" → "✅ 완료"
 
 # 완료 항목 추가
-완료 예정 항목 테이블의 상태 컬럼 업데이트
+완료 예정 항목 테이블의 상태 컬럼 업데이트 (양쪽 언어 섹션)
 구현 상세 섹션 추가
 
 # 설계 결정 기록
-"설계 결정 사항" 섹션에 항목 추가
+"Design Decisions" / "설계 결정 사항" 섹션에 항목 추가
 
 # 변경 이력 추가
-변경 이력 테이블 하단에 행 추가
+Change Log / 변경 이력 테이블 하단에 행 추가
 ```
 
 ---
@@ -87,10 +89,10 @@ Phase 문서 신규 생성 시 README.md의 프로젝트 구조 트리에 반영
 
 ```
 ├── Phase/
-│   ├── Phase1_기반구축.md      # ✅ 완료
-│   ├── Phase2_핵심엔진.md      # 🔲 미시작
-│   ├── Phase3_산출물생성.md    # 🔲 미시작
-│   └── Phase4_품질검증.md      # 🔲 미시작
+│   ├── Phase1_Foundation.md          # ✅ 완료
+│   ├── Phase2_CoreEngine.md          # 🔲 미시작
+│   ├── Phase3_OutputGeneration.md    # 🔲 미시작
+│   └── Phase4_QualityAssurance.md    # 🔲 미시작
 ```
 
 ---
@@ -117,7 +119,7 @@ reason     : [변경 이유]
 
 ```
 [phase-doc] 완료
-- 대상 파일: Phase/PhaseN_[이름].md
+- 대상 파일: Phase/PhaseN_[EnglishName].md
 - 작업 유형: [신규 생성 | 상태 변경 | 완료 항목 추가 | 설계 변경 | 전체 갱신]
 - 변경 내용: [한 줄 요약]
 - dev-log 기록: ✅
@@ -129,11 +131,13 @@ reason     : [변경 이유]
 
 ### 파일 경로 규칙
 
+파일명은 반드시 **영어 PascalCase**로 작성한다. 한국어 파일명 사용 금지.
+
 ```
-Phase/Phase1_기반구축.md
-Phase/Phase2_핵심엔진.md
-Phase/Phase3_산출물생성.md
-Phase/Phase4_품질검증.md
+Phase/Phase1_Foundation.md
+Phase/Phase2_CoreEngine.md
+Phase/Phase3_OutputGeneration.md
+Phase/Phase4_QualityAssurance.md
 ```
 
 ### 상태 표기 규칙
@@ -166,3 +170,5 @@ Phase/Phase4_품질검증.md
 - 스킬/모듈의 실제 구현 내용을 반영할 것 (설계 예정 내용과 구분)
 - 완료 항목 기록 시 Python 소스 코드의 실제 클래스/함수명을 정확히 기재
 - `변경 이력` 섹션은 항상 최신 날짜순(하단 추가)으로 유지
+- **문서는 상단 영어 → `---` 구분선 → 하단 한국어 이중 언어 구조를 유지한다**
+- **갱신 시 영어/한국어 양쪽 섹션을 반드시 동시에 수정하여 내용 동기화를 유지한다**

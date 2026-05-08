@@ -196,10 +196,10 @@ ai_production_monitor/
 ├── n8n/
 │   └── workflow_a_simulator.json # Test simulator workflow (12 nodes)
 ├── Phase/
-│   ├── Phase1_환경구축_데이터.md    # Environment setup + data (Phase 1)
-│   ├── Phase2_이상탐지_AI연동.md   # Anomaly detection + AI (Phase 2)
-│   ├── Phase3_PowerBI_대시보드.md  # Power BI dashboard (Phase 3)
-│   └── Phase4_통합테스트_완성.md    # Integration test + completion (Phase 4)
+│   ├── Phase1_Foundation.md       # Environment setup + data (Phase 1)
+│   ├── Phase2_CoreEngine.md       # Anomaly detection + AI (Phase 2)
+│   ├── Phase3_PowerBIDashboard.md # Power BI dashboard (Phase 3)
+│   └── Phase4_IntegrationTest.md  # Integration test + completion (Phase 4)
 ├── pre-requirement/
 │   ├── pre-requirement.txt       # Project specification v3.0
 │   └── ai.md                     # AI expansion strategy document
@@ -231,10 +231,10 @@ ai_production_monitor/
 |---|---|
 | [pre-requirement.txt](pre-requirement/pre-requirement.txt) | Project specification v3.0 — architecture, data structures, detection rules, workflows, error handling |
 | [ai.md](pre-requirement/ai.md) | AI expansion strategy — Agent patterns, Sub-Agent architecture, cost analysis |
-| [Phase 1](Phase/Phase1_환경구축_데이터.md) | Environment setup + data generation details |
-| [Phase 2](Phase/Phase2_이상탐지_AI연동.md) | Anomaly detection + AI integration plan |
-| [Phase 3](Phase/Phase3_PowerBI_대시보드.md) | Power BI dashboard design |
-| [Phase 4](Phase/Phase4_통합테스트_완성.md) | Integration testing + completion plan |
+| [Phase 1](Phase/Phase1_Foundation.md) | Environment setup + data generation details |
+| [Phase 2](Phase/Phase2_CoreEngine.md) | Anomaly detection + AI integration plan |
+| [Phase 3](Phase/Phase3_PowerBIDashboard.md) | Power BI dashboard design |
+| [Phase 4](Phase/Phase4_IntegrationTest.md) | Integration testing + completion plan |
 
 ## Limitations
 

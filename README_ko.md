@@ -196,10 +196,10 @@ ai_production_monitor/
 ├── n8n/
 │   └── workflow_a_simulator.json # 테스트 시뮬레이터 워크플로 (12노드)
 ├── Phase/
-│   ├── Phase1_환경구축_데이터.md    # 환경 구축 + 데이터 (Phase 1)
-│   ├── Phase2_이상탐지_AI연동.md   # 이상 탐지 + AI 연동 (Phase 2)
-│   ├── Phase3_PowerBI_대시보드.md  # Power BI 대시보드 (Phase 3)
-│   └── Phase4_통합테스트_완성.md    # 통합 테스트 + 완성 (Phase 4)
+│   ├── Phase1_Foundation.md       # 환경 구축 + 데이터 (Phase 1)
+│   ├── Phase2_CoreEngine.md       # 이상 탐지 + AI 연동 (Phase 2)
+│   ├── Phase3_PowerBIDashboard.md # Power BI 대시보드 (Phase 3)
+│   └── Phase4_IntegrationTest.md  # 통합 테스트 + 완성 (Phase 4)
 ├── pre-requirement/
 │   ├── pre-requirement.txt       # 프로젝트 설계서 v3.0
 │   └── ai.md                     # AI 확장 전략 문서
@@ -231,10 +231,10 @@ ai_production_monitor/
 |---|---|
 | [pre-requirement.txt](pre-requirement/pre-requirement.txt) | 프로젝트 설계서 v3.0 — 아키텍처, 데이터 구조, 탐지 룰, 워크플로, 에러 핸들링 |
 | [ai.md](pre-requirement/ai.md) | AI 확장 전략 — Agent 패턴, Sub-Agent 아키텍처, 비용 분석 |
-| [Phase 1](Phase/Phase1_환경구축_데이터.md) | 환경 구축 + 데이터 생성 상세 |
-| [Phase 2](Phase/Phase2_이상탐지_AI연동.md) | 이상 탐지 + AI 연동 계획 |
-| [Phase 3](Phase/Phase3_PowerBI_대시보드.md) | Power BI 대시보드 설계 |
-| [Phase 4](Phase/Phase4_통합테스트_완성.md) | 통합 테스트 + 완성 계획 |
+| [Phase 1](Phase/Phase1_Foundation.md) | 환경 구축 + 데이터 생성 상세 |
+| [Phase 2](Phase/Phase2_CoreEngine.md) | 이상 탐지 + AI 연동 계획 |
+| [Phase 3](Phase/Phase3_PowerBIDashboard.md) | Power BI 대시보드 설계 |
+| [Phase 4](Phase/Phase4_IntegrationTest.md) | 통합 테스트 + 완성 계획 |
 
 ## 한계점
 

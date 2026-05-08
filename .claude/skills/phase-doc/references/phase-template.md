@@ -1,11 +1,73 @@
 # Phase 문서 신규 생성 템플릿
 # 유형 = "신규 생성" 판정 시 로드
 
-Write 도구로 `Phase/PhaseN_[이름].md`를 아래 표준 구조로 생성한다.
+Write 도구로 `Phase/PhaseN_[EnglishName].md`를 아래 표준 구조로 생성한다.
+파일명은 반드시 영어 PascalCase로 작성한다. (예: Phase1_Foundation.md, Phase2_CoreEngine.md)
+
+**문서 구조**: 상단 영어(English) → 구분선 → 하단 한국어(Korean) 순서로 배치한다.
+영어/한국어 섹션은 동일한 내용을 각 언어로 작성하며, 반드시 동기화를 유지한다.
 
 ---
 
 ```markdown
+# Phase N — [Phase Name] `[Status]`
+
+> [One-line description of this phase]
+
+**Completed**: YYYY-MM-DD  (only when completed)
+**Status**: ✅ Completed | 🚧 In Progress | 🔲 Not Started
+**Prerequisites**: Phase N-1 completion status
+
+---
+
+## Overview
+
+[2-4 line description of what this Phase achieves]
+
+---
+
+## Deliverables
+
+| # | Skill / Module | Status | Skill Type |
+|---|---|---|---|
+| N | `skill-name` | ✅/🔲 | general/project-specific |
+
+---
+
+## [Skill/Module Name]
+
+### Purpose
+### Implementation Files
+### Core Classes / Structure (code block)
+### Design Decisions
+### Usage Examples
+
+---
+
+## Phase N Skill Classification
+
+| Skill | Classification | Reason |
+|---|---|---|
+
+---
+
+## Prerequisites & Dependencies
+
+---
+
+## Development Notes
+
+---
+
+## Change Log
+
+| Date | Description |
+|---|---|
+| YYYY-MM-DD | Initial creation |
+
+---
+---
+
 # Phase N — [Phase 이름] `[상태]`
 
 > [Phase 한 줄 설명]
