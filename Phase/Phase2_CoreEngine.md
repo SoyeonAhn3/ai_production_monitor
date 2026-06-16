@@ -311,6 +311,43 @@ n8n Static Data (workflow-internal JSON)
 3. Parse failure → store full text in ai_insight (fallback)
 4. Track success/failure via ai_parsed column
 
+### Enhancement (2026-06-16) — Evidence-Grounded AI Analysis `🚧 Code-complete, pending n8n test`
+
+**Why:** Workflow B currently sends Claude only a one-line anomaly summary (no tools/context), so `root_cause` is an ungrounded guess. Goal: ground the AI in already-available sheet data and output a verifiable hypothesis with confidence.
+
+**Evidence packet** (assembled in Code 4, masked before sending):
+- Affected line's recent 6-hour trend (production / defect rate / operation rate)
+- Recent 7-day history of the same anomaly type (dates, severity)
+- Same-hour peer lines in the same team (isolate line-local vs shared cause)
+
+**New output schema** (replaces the format above):
+
+```json
+{
+  "anomalies": [{
+    "id": 1, "summary": "...", "root_cause": "...",
+    "confidence": "high/medium/low + one-line basis",
+    "evidence": ["cited figure 1", "cited figure 2"],
+    "alternatives": ["alternative hypothesis"],
+    "ruled_out": ["excluded cause + reason"],
+    "verify_first": "what to check first",
+    "action": "...", "cross_impact": "..."
+  }],
+  "overall_assessment": "..."
+}
+```
+
+**Output destination:** Email only (P3) — AI results are NOT written to `anomaly_log` (no schema/structural change). Dashboard-side confidence filtering, if needed later, can be added via a single Sheets "update" node (P1); this design does not block it.
+
+**Files to modify** (src reference + deployed `workflow_b_monitor.json`):
+- `Code 2` — output `productionRows`
+- `Merge: anomaly+history` (JSON-only glue node) — carry `productionRows` through
+- `Code 3` — pass through `productionRows` + `historicalLog`
+- `Code 4` — build & mask evidence packet, new prompt + schema
+- `Code 5` — parse new fields, render in email HTML (sheet write unchanged)
+
+**Status:** Implemented in code (2026-06-16) — 4 src nodes (Code 2/3/4/5) + `Merge: anomaly+history` glue node updated and synced into deployed `workflow_b_monitor.json`. Pending n8n + Claude API runtime test. Phase 2 stays ✅ Completed (post-completion enhancement).
+
 ---
 
 ## Workflow B — n8n Node Structure (Separated by Function)
@@ -539,6 +576,7 @@ Stage 3: AI Integration
 | 2026-05-02 | Spec v3.0: run_id/idempotency_key/notification_status added to anomaly_log, run_id added to error_log |
 | 2026-05-02 | Workflow D execution time specified as 07:40, critical re-alert changed to 60min (next cycle) |
 | 2026-05-08 | All 16 items completed: detection engine, validator, classifier, masker, n8n Code nodes 0-5, Workflow B (675 lines), AI Agent tools/loop/report, Workflow D (404 lines). Document restructured to bilingual format |
+| 2026-06-16 | Implemented (code, pending n8n test): Workflow B AI analysis upgraded to evidence-grounded diagnosis (evidence packet + confidence/alternatives/verify); results in email only (P3, no anomaly_log schema change). Modified Code 2/3/4/5 + Merge glue node, synced to deployed JSON |
 
 ---
 ---
@@ -863,6 +901,43 @@ n8n Static Data (워크플로 내부 JSON)
 3. 파싱 실패 → 전체 텍스트를 ai_insight에 저장 (폴백)
 4. ai_parsed 컬럼으로 성공/실패 기록
 
+### 개선 (2026-06-16) — 근거 기반 AI 분석 `🚧 코드 반영 완료, n8n 테스트 전`
+
+**배경:** 현재 워크플로 B는 Claude에게 이상 한 줄 요약만 전달(도구·컨텍스트 없음)하여 `root_cause`가 근거 없는 추측이다. 목표: 이미 시트에 있는 데이터로 AI에 근거를 제공하고, 신뢰도가 있는 검증 가능한 가설을 출력하게 한다.
+
+**증거 패킷** (Code 4에서 조립, 전송 전 마스킹):
+- 해당 라인 최근 6시간 추세 (생산 / 불량률 / 가동률)
+- 동일 유형 최근 7일 이력 (날짜, 심각도)
+- 동시간대 같은 팀 타 라인 (라인 국소 문제 vs 공통 원인 구분)
+
+**새 출력 스키마** (위 형식을 대체):
+
+```json
+{
+  "anomalies": [{
+    "id": 1, "summary": "...", "root_cause": "...",
+    "confidence": "높음/중간/낮음 + 한 줄 근거",
+    "evidence": ["인용 수치 1", "인용 수치 2"],
+    "alternatives": ["대안 가설"],
+    "ruled_out": ["배제된 원인 + 이유"],
+    "verify_first": "먼저 확인할 것",
+    "action": "...", "cross_impact": "..."
+  }],
+  "overall_assessment": "..."
+}
+```
+
+**결과 저장 위치:** 이메일 전용 (P3) — AI 결과를 `anomaly_log`에 쓰지 않음 (스키마·구조 변경 없음). 추후 대시보드에서 신뢰도 필터가 필요하면 Sheets "update" 노드 1개(P1)로 추가 가능하며, 본 설계가 이를 막지 않는다.
+
+**수정 파일** (src 참조본 + 배포본 `workflow_b_monitor.json`):
+- `Code 2` — `productionRows` 출력
+- `Merge: 이상+이력` (JSON 전용 글루 노드) — `productionRows` 통과
+- `Code 3` — `productionRows` + `historicalLog` 패스스루
+- `Code 4` — 증거 패킷 조립·마스킹, 프롬프트·스키마 교체
+- `Code 5` — 새 필드 파싱, 이메일 HTML 렌더링 (시트 쓰기 무변경)
+
+**상태:** 코드 반영 완료 (2026-06-16) — src 노드 4개(Code 2/3/4/5) + `Merge: 이상+이력` 글루 노드 수정 및 배포본 `workflow_b_monitor.json` 동기화. n8n + Claude API 런타임 테스트 전. Phase 2는 ✅ 완료 유지 (완료 후 개선).
+
 ---
 
 ## 워크플로 B — n8n 노드 구조 (기능별 분리)
@@ -1095,3 +1170,4 @@ n8n Code 노드 안에서 직접 코딩하면 디버깅이 불편하다 (에러 
 | 2026-05-02 | 명세서 v3.0 반영: anomaly_log에 run_id/idempotency_key/notification_status 추가, error_log에 run_id 추가 |
 | 2026-05-02 | 워크플로 D 실행 시각 07:40으로 명시, 심각 재알림 60분(다음 사이클)으로 변경 |
 | 2026-05-08 | 전체 16항목 구현 완료: 탐지 엔진, 검증기, 분류기, 마스커, n8n Code 노드 0~5, 워크플로 B (675줄), AI Agent 도구/루프/리포트, 워크플로 D (404줄). 문서 이중 언어 구조로 재작성 |
+| 2026-06-16 | 구현(코드, n8n 테스트 전): 워크플로 B AI 분석을 근거 기반 진단으로 개선 (증거 패킷 + 신뢰도/대안/검증); 결과는 이메일 전용 (P3, anomaly_log 스키마 변경 없음). Code 2/3/4/5 + Merge 글루 노드 수정, 배포 JSON 동기화 |

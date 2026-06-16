@@ -149,7 +149,7 @@ function evaluateRule(rule, row, prevRow, master, allRows, lineId) {
 const { current, previous, currentHour, previousHour } = getLastTwoHours(productionRows);
 
 if (current.length === 0) {
-  return [{ json: { anomalies: [], hourly_summary: [], currentHour: null, run_id, lineMaster, warnings: input.warnings } }];
+  return [{ json: { anomalies: [], hourly_summary: [], currentHour: null, run_id, lineMaster, warnings: input.warnings, productionRows } }];
 }
 
 const lineMasterMap = {};
@@ -196,4 +196,5 @@ const hourly_summary = teams.map(team => {
   };
 });
 
-return [{ json: { anomalies, hourly_summary, currentHour, run_id, lineMaster, warnings: input.warnings } }];
+// productionRows: 워크플로 B 개선 — Code4 증거 패킷(6h 추세/동시간대 타라인)용 전체 시간별 데이터 전달
+return [{ json: { anomalies, hourly_summary, currentHour, run_id, lineMaster, warnings: input.warnings, productionRows } }];

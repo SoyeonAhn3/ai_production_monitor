@@ -10,9 +10,11 @@ const currentHour = input.currentHour;
 const lineMaster = input.lineMaster;
 const warnings = input.warnings || [];
 const hourly_summary = input.hourly_summary;
+// productionRows: 워크플로 B 개선 — Code4 증거 패킷용으로 패스스루
+const productionRows = input.productionRows || [];
 
 if (!newAnomalies || newAnomalies.length === 0) {
-  return [{ json: { classifiedAnomalies: [], run_id, currentHour, lineMaster, warnings, hourly_summary, hasSevere: false, hasMedium: false } }];
+  return [{ json: { classifiedAnomalies: [], run_id, currentHour, lineMaster, warnings, hourly_summary, hasSevere: false, hasMedium: false, historicalLog, productionRows } }];
 }
 
 // --- idempotency_key 생성 + 중복 제거 ---
@@ -115,5 +117,6 @@ return [{ json: {
   classifiedAnomalies: classified,
   toNotify,
   run_id, currentHour, lineMaster, warnings, hourly_summary,
-  hasSevere, hasMedium
+  hasSevere, hasMedium,
+  historicalLog, productionRows
 } }];

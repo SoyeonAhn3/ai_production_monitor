@@ -19,6 +19,15 @@ function applyUnmask(text) {
   return unmasked;
 }
 
+// 워크플로 B 개선 — confidence 문자열에서 레벨 키워드 추출
+function extractConfidenceLevel(conf) {
+  if (!conf) return '';
+  if (conf.includes('높음')) return '높음';
+  if (conf.includes('중간')) return '중간';
+  if (conf.includes('낮음')) return '낮음';
+  return '';
+}
+
 // --- AI 응답 파싱 ---
 let aiResult = null;
 let aiParsed = false;
@@ -45,12 +54,18 @@ for (const a of classifiedAnomalies) {
         const insight = [
           aiEntry.summary,
           `원인: ${aiEntry.root_cause}`,
+          aiEntry.confidence ? `신뢰도: ${aiEntry.confidence}` : '',
+          (aiEntry.evidence && aiEntry.evidence.length) ? `근거: ${aiEntry.evidence.join('; ')}` : '',
+          (aiEntry.alternatives && aiEntry.alternatives.length) ? `대안가설: ${aiEntry.alternatives.join('; ')}` : '',
+          (aiEntry.ruled_out && aiEntry.ruled_out.length) ? `배제: ${aiEntry.ruled_out.join('; ')}` : '',
+          aiEntry.verify_first ? `먼저확인: ${aiEntry.verify_first}` : '',
           `조치: ${aiEntry.action}`,
-          `패턴검증: ${aiEntry.pattern_verification}`,
-          aiEntry.cross_impact !== '없음' ? `교차영향: ${aiEntry.cross_impact}` : ''
+          (aiEntry.cross_impact && aiEntry.cross_impact !== '없음') ? `교차영향: ${aiEntry.cross_impact}` : ''
         ].filter(Boolean).join(' | ');
         a.ai_insight = applyUnmask(insight);
         a.ai_parsed = true;
+        a.ai_confidence = extractConfidenceLevel(aiEntry.confidence);
+        a.ai_evidence_count = (aiEntry.evidence && aiEntry.evidence.length) || 0;
       }
     }
   } else if (!skipAI && !aiParsed && aiResult?.raw_text) {
@@ -94,7 +109,11 @@ if (severeList.length > 0 || mediumList.length > 0) {
       parts.push(`<b>${a['라인명']} — ${a.type}</b> (${a.pattern_type}, ${a.recurrence_count}회 발생)<br>`);
       parts.push(`${a.detail}<br>`);
       if (matched?.ai_insight) {
-        parts.push(`<br><b>AI 분석:</b> ${matched.ai_insight}`);
+        const conf = matched.ai_confidence
+          ? ` <span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;background:#eee;color:#333;">신뢰도 ${matched.ai_confidence}</span>`
+          : '';
+        const lines = matched.ai_insight.split(' | ').map(s => `<div style="margin:2px 0;">${s}</div>`).join('');
+        parts.push(`<br><b>AI 분석</b>${conf}<div style="margin-top:4px;">${lines}</div>`);
       }
       parts.push(`</div>`);
     }
